@@ -14,27 +14,17 @@ namespace DICUI.Utilities
         private readonly string identifier;
         private readonly GitHubRelease release;
 
-        public Version(string identifier) : this(identifier, null)
-        {
+        public Version(string identifier) => this.identifier = identifier;
 
-        }
-
-        public Version(string identifier, GitHubRelease release)
+        public Version(GitHubRelease release)
         {
-            this.identifier = identifier;
+            this.identifier = release.tag_name;
             this.release = release;
         }
 
-        public bool IsNewerThan(Version reference)
-        {
-            return reference.identifier != this.identifier;
-        }
-
-        public override string ToString() 
-        {
-            return identifier;
-        }
-
+        public bool IsNewerThan(Version reference) => reference.identifier != this.identifier;
+        public string URL() => release.assets[0].browser_download_url;
+        public override string ToString() => identifier;
     }
 
     class GitHubRelease
@@ -42,7 +32,13 @@ namespace DICUI.Utilities
         public string url;
         public string html_url;
         public string tag_name;
+        public List<Assets> assets;
         public string zipball_url;
+
+        public class Assets
+        {
+            public string browser_download_url;
+        }
     }
 
     class Updater
@@ -64,7 +60,7 @@ namespace DICUI.Utilities
 
                 GitHubRelease latestRelease = JsonConvert.DeserializeObject<GitHubRelease>(json);
 
-                Version latestVersion = new Version(latestRelease.tag_name);
+                Version latestVersion = new Version(latestRelease);
 
                 return latestVersion;
             }
@@ -78,9 +74,31 @@ namespace DICUI.Utilities
             return Tuple.Create(latest.IsNewerThan(current), current, latest);
         }
 
-        public static void downloadLatestReleaseToTemporary(Version version)
+        private static string downloadLatestReleaseToTemporary(Version version)
         {
-            string temporaryPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            using (WebClient wc = new WebClient())
+            {
+                wc.Headers.Add("user-agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)");
+
+                string temporaryPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+                wc.DownloadFile(version.URL(), temporaryPath);
+
+                return temporaryPath;
+            }
+        }
+
+        private static void extractDowloadedRelease(string archivePath)
+        {
+            string extractPath = @"C:\Users\Jack\Desktop\foo";
+
+            System.IO.Compression.ZipFile.ExtractToDirectory(archivePath, extractPath);
+        }
+
+        public static void test()
+        {
+            var v = CheckIfUpdateIsRequired();
+            var p = downloadLatestReleaseToTemporary(v.Item3);
+            extractDowloadedRelease(p);
         }
 
     }
