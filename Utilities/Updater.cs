@@ -43,48 +43,62 @@ namespace DICUI.Utilities
 
     class Updater
     {
-        private const string GITHUB_LAST_RELEASE_URL = "https://api.github.com/repos/reignstumble/DICUI/releases/latest";
+        private class Utilities
+        {
+            public static WebClient CreateHTTPClient()
+            {
+                WebClient wc = new WebClient();
+                // this is needed because GitHub requires an user agent
+                wc.Headers.Add("user-agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)");
+                return wc;
+            }
 
-        private static Version GetCurrentVersion()
+            public static string GetTemporaryPath() => Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+
+            public static void DownloadFile(string url, string destination)
+            {
+                using (WebClient wc = CreateHTTPClient())
+                {
+                    wc.DownloadFile(url, destination);
+                }
+            }
+        }
+
+
+        private const string DICUI_LAST_RELEASE_URL = "https://api.github.com/repos/reignstumble/DICUI/releases/latest";
+        private const string DIC_LAST_RELEASE_URL = "https://api.github.com/repos/saramibreak/DiscImageCreator/releases/latest";
+
+        private static Version GetCurrentDICUIVersion()
         {
             return new Version("1.06");
         }
 
-        private static Version GetLatestVersion()
+        private static Version GetLatestDICUIVersion()
         {
-            using (WebClient wc = new WebClient())
+            using (WebClient wc = Utilities.CreateHTTPClient())
             {
-                wc.Headers.Add("user-agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)");
-
-                var json = wc.DownloadString(GITHUB_LAST_RELEASE_URL);
+                var json = wc.DownloadString(DICUI_LAST_RELEASE_URL);
 
                 GitHubRelease latestRelease = JsonConvert.DeserializeObject<GitHubRelease>(json);
-
                 Version latestVersion = new Version(latestRelease);
 
                 return latestVersion;
             }
         }
 
-        private static Tuple<bool, Version, Version> CheckIfUpdateIsRequired()
+        private static Tuple<bool, Version, Version> CheckIfDICUIUpdateIsRequired()
         {
-            Version current = GetCurrentVersion();
-            Version latest = GetLatestVersion();
+            Version current = GetCurrentDICUIVersion();
+            Version latest = GetLatestDICUIVersion();
 
             return Tuple.Create(latest.IsNewerThan(current), current, latest);
         }
 
-        private static string downloadLatestReleaseToTemporary(Version version)
+        private static string downloadLatestDICUIReleaseToTemporary(Version version)
         {
-            using (WebClient wc = new WebClient())
-            {
-                wc.Headers.Add("user-agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)");
-
-                string temporaryPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-                wc.DownloadFile(version.URL(), temporaryPath);
-
-                return temporaryPath;
-            }
+            string temporary = Utilities.GetTemporaryPath();
+            Utilities.DownloadFile(version.URL(), temporary);
+            return temporary;
         }
 
         private static void extractDowloadedRelease(string archivePath)
@@ -96,8 +110,8 @@ namespace DICUI.Utilities
 
         public static void test()
         {
-            var v = CheckIfUpdateIsRequired();
-            var p = downloadLatestReleaseToTemporary(v.Item3);
+            var v = CheckIfDICUIUpdateIsRequired();
+            var p = downloadLatestDICUIReleaseToTemporary(v.Item3);
             extractDowloadedRelease(p);
         }
 

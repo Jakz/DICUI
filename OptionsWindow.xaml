@@ -9,10 +9,11 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition />
+            <RowDefinition />
             <RowDefinition Height="40"/>
         </Grid.RowDefinitions>
 
-        <GroupBox Grid.Column="0" Margin="5,5,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Header="Paths">
+        <GroupBox Grid.Row="0" Margin="5,5,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Header="Paths">
 
             <Grid Margin="10">
 
@@ -49,7 +50,11 @@
 
         </GroupBox>
 
-        <Grid Height="22" Grid.Row="1" Grid.Column="0">
+        <GroupBox Grid.Row="1" Margin="5,5,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Header="Updater">
+
+        </GroupBox>
+
+        <Grid Height="22" Grid.Row="2" Grid.Column="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="1*"/>
