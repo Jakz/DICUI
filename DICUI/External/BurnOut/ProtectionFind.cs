@@ -21,9 +21,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using DICUI.External.Unshield;
 using LibMSPackN;
 
-namespace DICUI.External
+namespace DICUI.External.BurnOut
 {
     public static class ProtectionFind
     {
@@ -71,7 +72,7 @@ namespace DICUI.External
                     protections[file] = mappings[Path.GetExtension(file)];
 
                 // Now check to see if the file contains any additional information
-                string protectionname = ScanInFile(file).Replace("" + (char)0x00, "");
+                string protectionname = ScanInFile(file)?.Replace("" + (char)0x00, "");
                 if (!String.IsNullOrEmpty(protectionname))
                     protections[file] = protectionname;
             }
@@ -89,20 +90,34 @@ namespace DICUI.External
         /// Scan an individual file for copy protection
         /// </summary>
         /// <remarks>
-        /// TODO: Handle archives (zip, arc, cab[is])
+        /// TODO: Handle archives (zip, arc)
         /// TODO: Find protection mentions in text files
         /// TODO: Might have to work on Streams instead to later support archives
         /// </remarks>
         private static string ScanInFile(string file)
         {
+            // Get the extension for certain checks
             string extension = Path.GetExtension(file).ToLower().TrimStart('.');
 
-            #region EXE/DLL/ICD/DAT Content Checks
+            // Read the first 8 bytes to get the file type
+            string magic = "";
+            try
+            {
+                using (BinaryReader br = new BinaryReader(File.OpenRead(file)))
+                {
+                    magic = new String(br.ReadChars(8));
+                }
+            }
+            catch
+            {
+                // We don't care what the issue was, we can't open the file
+                return null;
+            }
 
-            if (extension == "exe" || extension == "ex_"
-                || extension == "dll" || extension == "dl_"
-                || extension == "dat"
-                || extension == "icd")
+            #region Executable Content Checks
+
+            // Windows Executable and DLL
+            if (magic.StartsWith("MZ"))
             {
                 try
                 {
@@ -150,9 +165,8 @@ namespace DICUI.External
                         return "LaserLock " + GetLaserLockVersion(FileContent, --position) + " " + GetLaserLockBuild(FileContent, false);
 
                     // ProtectDisc
-                    if ((FileContent.IndexOf("HúMETINF")) > -1)
+                    if ((position = FileContent.IndexOf("HúMETINF")) > -1)
                     {
-                        position--;
                         string version = EVORE.SearchProtectDiscVersion(file);
                         if (version.Length > 0)
                         {
@@ -167,11 +181,9 @@ namespace DICUI.External
                         }
                     }
 
-                    if ((FileContent.IndexOf("ACE-PCD")) > -1)
+                    if ((position = FileContent.IndexOf("ACE-PCD")) > -1)
                     {
-                        position--;
-                        string version;
-                        version = EVORE.SearchProtectDiscVersion(file);
+                        string version = EVORE.SearchProtectDiscVersion(file);
                         if (version.Length > 0)
                         {
                             string[] astrVersionArray = version.Split('.');
@@ -182,6 +194,14 @@ namespace DICUI.External
                     }
 
                     // SafeDisc / SafeCast
+                    if ((position = FileContent.IndexOf("BoG_ *90.0&!!  Yy>")) > -1)
+                    {
+                        if (FileContent.IndexOf("product activation library") > 0)
+                            return "SafeCast " + GetSafeDiscVersion(file, position);
+                        else
+                            return "SafeDisc " + GetSafeDiscVersion(file, position);
+                    }
+
                     if (FileContent.Contains((char)0x00 + (char)0x00 + "BoG_")
                         || FileContent.Contains("stxt774")
                         || FileContent.Contains("stxt371"))
@@ -193,15 +213,6 @@ namespace DICUI.External
                         return "SafeDisc 3.20-4.xx (version removed)";
                     }
 
-                    if ((FileContent.IndexOf("BoG_ *90.0&!!  Yy>")) > -1)
-                    {
-                        position--;
-                        if (FileContent.IndexOf("product activation library") > 0)
-                            return "SafeCast " + GetSafeDiscVersion(file, position);
-                        else
-                            return "SafeDisc " + GetSafeDiscVersion(file, position);
-                    }
-
                     // SecuROM
                     if ((position = FileContent.IndexOf("AddD" + (char)0x03 + (char)0x00 + (char)0x00 + (char)0x00)) > -1)
                         return "SecuROM " + GetSecuROM4Version(file, position);
@@ -209,8 +220,8 @@ namespace DICUI.External
                     if ((position = FileContent.IndexOf("" + (char)0xCA + (char)0xDD + (char)0xDD + (char)0xAC + (char)0x03)) > -1)
                         return "SecuROM " + GetSecuROM4and5Version(file, position);
 
-                    if (FileContent.Contains(".securom"))
-                    //if (FileContent.StartsWith(".securom" + (char)0xE0 + (char)0xC0))
+                    if (FileContent.Contains(".securom")
+                        || FileContent.StartsWith(".securom" + (char)0xE0 + (char)0xC0))
                         return "SecuROM " + GetSecuROM7Version(file);
 
                     if (FileContent.Contains("_and_play.dll" + (char)0x00 + "drm_pagui_doit"))
@@ -223,17 +234,15 @@ namespace DICUI.External
 
                     if ((position = FileContent.IndexOf("" + (char)0xEF + (char)0xBE + (char)0xAD + (char)0xDE)) > -1)
                     {
-                        position--;
                         if (FileContent.Substring(position + 5, 3) == "" + (char)0x00 + (char)0x00 + (char)0x00
                             && FileContent.Substring(position + 16, 4) == "" + (char)0x00 + (char)0x10 + (char)0x00 + (char)0x00)
-                            return "SolidShield 1";
+                            return "SolidShield 1 (SolidShield EXE Wrapper)";
                         else
                         {
                             string version = GetFileVersion(file);
                             string desc = FileVersionInfo.GetVersionInfo(file).FileDescription.ToLower();
                             if (!string.IsNullOrEmpty(version) && desc.Contains("solidshield"))
                                 return "SolidShield Core.dll " + version;
-                            //return "SolidShield EXE Wrapper";
                         }
                     }
 
@@ -241,7 +250,7 @@ namespace DICUI.External
                     position = position == -1 ? FileContent.IndexOf("" + (char)0xAD + (char)0xDE + (char)0xFE + (char)0xCA + (char)0x5) : position;
                     if (position > -1)
                     {
-                        position--;
+                        position--; // TODO: Verify this subtract
                         if (FileContent.Substring(position + 5, 3) == "" + (char)0x00 + (char)0x00 + (char)0x00
                             && FileContent.Substring(position + 16, 4) == "" + (char)0x00 + (char)0x10 + (char)0x00 + (char)0x00)
                         {
@@ -258,7 +267,7 @@ namespace DICUI.External
                                 + "o" + (char)0x00 + "n" + (char)0x00 + (char)0x00 + (char)0x00 + (char)0x00);
                             if (position > -1)
                             {
-                                position--;
+                                position--; // TODO: Verify this subtract
                                 return "SolidShield 2 + Tagès " + FileContent.Substring(position + 0x38, 1) + "." + FileContent.Substring(position + 0x38 + 4, 1) + "." + FileContent.Substring(position + 0x38 + 8, 1) + "." + FileContent.Substring(position + 0x38 + 12, 1);
                             }
                             else
@@ -298,16 +307,16 @@ namespace DICUI.External
                         return "TAGES " + GetFileVersion(file);
 
                     if ((position = FileContent.IndexOf("" + (char)0xE8 + "u" + (char)0x00 + (char)0x00 + (char)0x00 + (char)0xE8)) > -1
-                        && FileContent.Substring(--position + 8, 3) == "" + (char)0xFF + (char)0xFF + "h")
+                        && FileContent.Substring(--position + 8, 3) == "" + (char)0xFF + (char)0xFF + "h") // TODO: Verify this subtract
                         return "TAGES " + GetTagesVersion(file, position);
 
                     // VOB ProtectCD/DVD
                     if ((position = FileContent.IndexOf("VOB ProtectCD")) > -1)
-                        return "VOB ProtectCD/DVD " + GetProtectCDoldVersion(file, --position);
+                        return "VOB ProtectCD/DVD " + GetProtectCDoldVersion(file, --position); // TODO: Verify this subtract
 
                     if ((position = FileContent.IndexOf("DCP-BOV" + (char)0x00 + (char)0x00)) > -1)
                     {
-                        string version = GetVOBProtectCDDVDVersion(file, --position);
+                        string version = GetVOBProtectCDDVDVersion(file, --position); // TODO: Verify this subtract
                         if (version.Length > 0)
                         {
                             return "VOB ProtectCD/DVD " + version;
@@ -345,8 +354,25 @@ namespace DICUI.External
 
             #region Textfile Content Checks
 
-            if (extension == "txt" || extension == "rtf" || extension == "doc" || extension == "docx")
+            if (magic.StartsWith("{\rtf") // Rich Text File
+                || magic.StartsWith("" + (char)0xd0 + (char)0xcf + (char)0x11 + (char)0xe0 + (char)0xa1 + (char)0xb1 + (char)0x1a + (char)0xe1) // Microsoft Office File (old)
+                || extension == "txt") // Generic textfile (no header)
             {
+                try
+                {
+                    StreamReader sr = File.OpenText(file);
+                    string FileContent = sr.ReadToEnd().ToLower();
+                    sr.Close();
+
+                    // CD-Key
+                    if (FileContent.Contains("a valid serial number is required")
+                        || FileContent.Contains("serial number is located"))
+                        return "CD-Key / Serial";
+                }
+                catch
+                {
+                    // We don't care what the error was
+                }
                 // No-op
             }
 
@@ -354,17 +380,56 @@ namespace DICUI.External
 
             #region Archive Content Checks
 
-            if (extension == "7z" || extension == "rar" || extension == "zip")
+            // 7-zip
+            if (magic.StartsWith("7z" + (char)0xbc + (char)0xaf + (char)0x27 + (char)0x1c))
             {
                 // No-op
             }
-            else if (extension == "cab")
-            {
-                string tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                Directory.CreateDirectory(tempPath);
 
+            // InstallShield CAB
+            else if (magic.StartsWith("ISc"))
+            {
                 try
                 {
+                    string tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                    Directory.CreateDirectory(tempPath);
+
+                    UnshieldCabinet cabfile = UnshieldCabinet.Open(file);
+                    for (int i = 0; i < cabfile.FileCount; i++)
+                    {
+                        string tempFileName = Path.Combine(tempPath, cabfile.FileName(i));
+                        if (cabfile.FileSave(i, tempFileName))
+                        {
+                            string protection = ScanInFile(tempFileName);
+                            try
+                            {
+                                File.Delete(tempFileName);
+                            }
+                            catch { }
+
+                            if (!String.IsNullOrEmpty(protection))
+                            {
+                                try
+                                {
+                                    Directory.Delete(tempPath, true);
+                                }
+                                catch { }
+                                return protection;
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            // Microsoft CAB
+            else if (magic.StartsWith("MSCF"))
+            {
+                try
+                {
+                    string tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                    Directory.CreateDirectory(tempPath);
+
                     MSCabinet cabfile = new MSCabinet(file);
                     foreach (var sub in cabfile.GetFiles())
                     {
@@ -375,22 +440,30 @@ namespace DICUI.External
 
                         if (!String.IsNullOrEmpty(protection))
                         {
+                            try
+                            {
+                                Directory.Delete(tempPath, true);
+                            }
+                            catch { }
                             return protection;
                         }
                     }
                 }
-                catch
-                {
-                    // We assume it's an InstallShield CAB and ignore
-                }
-                finally
-                {
-                    try
-                    {
-                        Directory.Delete(tempPath, true);
-                    }
-                    catch { }
-                }
+                catch { }
+            }
+
+            // PKZIP
+            else if (magic.StartsWith("PK" + (char)03 + (char)04)
+                || magic.StartsWith("PK" + (char)05 + (char)06)
+                || magic.StartsWith("PK" + (char)07 + (char)08))
+            {
+                // No-op
+            }
+            // RAR
+
+            else if (magic.StartsWith("Rar!"))
+            {
+                // No-op
             }
 
             #endregion
@@ -1164,10 +1237,13 @@ namespace DICUI.External
             // dotFuscator - Not a protection
             //mapping["DotfuscatorAttribute"] = "dotFuscator";
 
+            // EA CdKey Registration Module
+            mapping["ereg.ea-europe.com"] = "EA CdKey Registration Module";
+
             // EXE Stealth
             mapping["??[[__[[_" + (char)0x00 + "{{" + (char)0x0
                     + (char)0x00 + "{{" + (char)0x00 + (char)0x00 + (char)0x00 + (char)0x00 + (char)0x0
-                    + (char)0x00 + (char)0x00 + (char)0x00 + (char)0x00 + "?;;??;;??"] = "EXE Stealth";
+                    + (char)0x00 + (char)0x00 + (char)0x00 + (char)0x00 + "?;??;??"] = "EXE Stealth";
 
             // Games for Windows - Live
             mapping["xlive.dll"] = "Games for Windows - Live";

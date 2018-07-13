@@ -26,12 +26,10 @@ namespace DICUI
         private Options _options;
         private OptionsWindow _optionsWindow;
 
-        public bool QuietMode { get; set; }
+        private LogWindow _logWindow;
 
         public MainWindow()
         {
-            QuietMode = true;
-
             InitializeComponent();
 
             // Initializes and load Options object
@@ -39,10 +37,24 @@ namespace DICUI
             _options.Load();
             ViewModels.OptionsViewModel = new OptionsViewModel(_options);
 
+            _logWindow = new LogWindow(this);
+            ViewModels.LoggerViewModel.SetWindow(_logWindow);
+
             // Disable buttons until we load fully
             StartStopButton.IsEnabled = false;
             DiskScanButton.IsEnabled = false;
             CopyProtectScanButton.IsEnabled = false;
+
+            if (_options.OpenLogWindowAtStartup)
+            {
+                System.Drawing.Rectangle bounds = WinForms.Screen.PrimaryScreen.WorkingArea;
+
+                this.WindowStartupLocation = WindowStartupLocation.Manual;
+                double combinedHeight = this.Height + _logWindow.Height + UIElements.LogWindowMarginFromMainWindow;
+
+                this.Left = bounds.Left + (bounds.Width - this.Width) / 2;
+                this.Top = bounds.Top + (bounds.Height - combinedHeight) / 2;
+            }
         }
 
 
@@ -56,6 +68,14 @@ namespace DICUI
                 return;
 
             _alreadyShown = true;
+
+            if (_options.OpenLogWindowAtStartup)
+            {
+                //TODO: this should be bound directly to WindowVisible property in two way fashion
+                // we need to study how to properly do it in XAML
+                ShowLogMenuItem.IsChecked = true;
+                ViewModels.LoggerViewModel.WindowVisible = true;
+            }
 
             // Populate the list of systems
             StatusLabel.Content = "Creating system list, please wait!";
@@ -149,6 +169,32 @@ namespace DICUI
             EnsureDiscInformation();
         }
 
+        private void ProgressUpdated(object sender, Result value)
+        {
+            StatusLabel.Content = value.Message;
+        }
+
+        private void MainWindowLocationChanged(object sender, EventArgs e)
+        {
+            if (_logWindow.IsVisible)
+                _logWindow.AdjustPositionToMainWindow();
+        }
+
+        private void MainWindowActivated(object sender, EventArgs e)
+        {
+            if (_logWindow.IsVisible && !this.Topmost)
+            {
+                _logWindow.Topmost = true;
+                _logWindow.Topmost = false;
+            }
+        }
+
+        private void MainWindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (_logWindow.IsVisible)
+                _logWindow.Close();
+        }
+
         // Toolbar Events
 
         private void AppExitClick(object sender, RoutedEventArgs e)
@@ -224,7 +270,9 @@ namespace DICUI
         {
             _systems = Validators.CreateListOfSystems();
 
-            Dictionary<KnownSystemCategory, List<KnownSystem?>> mapping = _systems
+            ViewModels.LoggerViewModel.VerboseLogLn("Populating systems, {0} systems found.", _systems.Count);
+
+            Dictionary <KnownSystemCategory, List<KnownSystem?>> mapping = _systems
                 .GroupBy(s => s.Category())
                 .ToDictionary(
                     k => k.Key,
@@ -255,6 +303,8 @@ namespace DICUI
         /// <remarks>TODO: Find a way for this to periodically run, or have it hook to a "drive change" event</remarks>
         private void PopulateDrives()
         {
+            ViewModels.LoggerViewModel.VerboseLogLn("Scanning for drives..");
+            
             // Always enable the disk scan
             DiskScanButton.IsEnabled = true;
 
@@ -264,10 +314,13 @@ namespace DICUI
 
             if (DriveLetterComboBox.Items.Count > 0)
             {
-                DriveLetterComboBox.SelectedIndex = 0;
+                int index = _drives.FindIndex(d => d.MarkedActive);
+                DriveLetterComboBox.SelectedIndex = (index != -1 ? index : 0);
                 StatusLabel.Content = "Valid media found! Choose your Media Type";
                 StartStopButton.IsEnabled = true;
                 CopyProtectScanButton.IsEnabled = true;
+
+                ViewModels.LoggerViewModel.VerboseLogLn("Found {0} drives containing media: {1}", _drives.Count, String.Join(", ", _drives.Select(d => d.Letter)));
             }
             else
             {
@@ -275,6 +328,8 @@ namespace DICUI
                 StatusLabel.Content = "No valid media found!";
                 StartStopButton.IsEnabled = false;
                 CopyProtectScanButton.IsEnabled = false;
+
+                ViewModels.LoggerViewModel.VerboseLogLn("Found no drives contaning valid media.");
             }
         }
 
@@ -310,7 +365,7 @@ namespace DICUI
                 // Get the currently selected options
                 Drive = DriveLetterComboBox.SelectedItem as Drive,
 
-                DICParameters = ParametersTextBox.Text,
+                DICParameters = new Parameters(ParametersTextBox.Text),
 
                 QuietMode = _options.QuietMode,
                 ParanoidMode = _options.ParanoidMode,
@@ -334,8 +389,11 @@ namespace DICUI
             StartStopButton.Content = UIElements.StopDumping;
             CopyProtectScanButton.IsEnabled = false;
             StatusLabel.Content = "Beginning dumping process";
+            ViewModels.LoggerViewModel.VerboseLogLn("Starting dumping process..");
 
-            Result result = await _env.StartDumping();
+            var progress = new Progress<Result>();
+            progress.ProgressChanged += ProgressUpdated;
+            Result result = await _env.StartDumping(progress);
 
             StatusLabel.Content = result ? "Dumping complete!" : result.Message;
             StartStopButton.Content = UIElements.StartDumping;
@@ -431,6 +489,8 @@ namespace DICUI
             var env = DetermineEnvironment();
             if (env.Drive.Letter != default(char))
             {
+                ViewModels.LoggerViewModel.VerboseLogLn("Scanning for copy protection in {0}", _env.Drive.Letter);
+
                 var tempContent = StatusLabel.Content;
                 StatusLabel.Content = "Scanning for copy protection... this might take a while!";
                 StartStopButton.IsEnabled = false;
@@ -438,7 +498,9 @@ namespace DICUI
                 CopyProtectScanButton.IsEnabled = false;
 
                 string protections = await Validators.RunProtectionScanOnPath(env.Drive.Letter + ":\\");
-                MessageBox.Show(protections, "Detected Protection", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (!ViewModels.LoggerViewModel.WindowVisible)
+                    MessageBox.Show(protections, "Detected Protection", MessageBoxButton.OK, MessageBoxImage.Information);
+                ViewModels.LoggerViewModel.VerboseLog("Detected the following protections in {0}:\r\n\r\n{1}", env.Drive.Letter, protections);
 
                 StatusLabel.Content = tempContent;
                 StartStopButton.IsEnabled = true;
@@ -468,6 +530,8 @@ namespace DICUI
             if (speed == -1)
                 return;
 
+            ViewModels.LoggerViewModel.VerboseLogLn("Determined max drive speed for {0}: {1}.", _env.Drive.Letter, speed);
+
             // Choose the lower of the two speeds between the allowed speeds and the user-defined one
             int chosenSpeed = Math.Min(
                 AllowedSpeeds.GetForMediaType(_currentMediaType).Where(s => s <= speed).Last(),
@@ -489,7 +553,11 @@ namespace DICUI
 
             // Get the current optical disc type
             if (!_options.SkipMediaTypeDetection)
+            {
+                ViewModels.LoggerViewModel.VerboseLog("Trying to detect media type for drive {0}.. ", drive.Letter);
                 _currentMediaType = Validators.GetDiscType(drive.Letter);
+                ViewModels.LoggerViewModel.VerboseLogLn(_currentMediaType != null ? "unable to detect." : ("detected " + _currentMediaType.Name() + "."));
+            }
         }
 
         /// <summary>

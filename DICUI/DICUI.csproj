@@ -76,6 +76,7 @@
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />
     <Reference Include="System.Management.Instrumentation" />
     <Reference Include="System.Windows.Forms" />
@@ -91,27 +92,50 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="zlib.net, Version=1.0.3.0, Culture=neutral, PublicKeyToken=47d7877cb3620160">
+      <HintPath>..\packages\zlib.net.1.0.4.0\lib\zlib.net.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="LogWindow.xaml.cs">
+      <DependentUpon>LogWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Data\Constants.cs" />
-    <Compile Include="External\EVORE.cs" />
+    <Compile Include="External\BurnOut\EVORE.cs" />
+    <Compile Include="External\Unshield\CabDescriptor.cs" />
+    <Compile Include="External\Unshield\CommonHeader.cs" />
+    <Compile Include="External\Unshield\FileDescriptor.cs" />
+    <Compile Include="External\Unshield\Header.cs" />
+    <None Include="External\Unshield\LICENSE" />
+    <Compile Include="External\Unshield\OffsetList.cs" />
+    <Compile Include="External\Unshield\StringBuffer.cs" />
+    <Compile Include="External\Unshield\UnshieldCabinet.cs" />
+    <Compile Include="External\Unshield\UnshieldComponent.cs" />
+    <Compile Include="External\Unshield\UnshieldFileGroup.cs" />
+    <Compile Include="External\Unshield\UnshieldReader.cs" />
+    <Compile Include="External\Unshield\VolumeHeader.cs" />
     <Compile Include="Options.cs" />
-    <Compile Include="External\ProtectionFind.cs" />
+    <Compile Include="External\BurnOut\ProtectionFind.cs" />
     <Compile Include="UI\KnownSystemComboBoxItem.cs" />
     <Compile Include="UI\AllowedSpeeds.cs" />
     <Compile Include="UI\ViewModels.cs" />
     <Compile Include="Utilities\DumpEnvironment.cs" />
     <Compile Include="Utilities\Extensions.cs" />
+    <Compile Include="Utilities\Parameters.cs" />
     <Compile Include="Utilities\Result.cs" />
     <Compile Include="Utilities\Validators.cs" />
     <Compile Include="Utilities\Converters.cs" />
     <Compile Include="OptionsWindow.xaml.cs">
       <DependentUpon>OptionsWindow.xaml</DependentUpon>
     </Compile>
+    <Page Include="LogWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
