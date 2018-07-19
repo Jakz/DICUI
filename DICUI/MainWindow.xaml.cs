@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -11,6 +12,7 @@ using DICUI.UI;
 
 namespace DICUI
 {
+
     public partial class MainWindow : Window
     {
         // Private UI-related variables
@@ -47,16 +49,14 @@ namespace DICUI
 
             if (_options.OpenLogWindowAtStartup)
             {
-                System.Drawing.Rectangle bounds = WinForms.Screen.PrimaryScreen.WorkingArea;
-
                 this.WindowStartupLocation = WindowStartupLocation.Manual;
                 double combinedHeight = this.Height + _logWindow.Height + UIElements.LogWindowMarginFromMainWindow;
+                Rectangle bounds = GetScaledCoordinates(WinForms.Screen.PrimaryScreen.WorkingArea);
 
                 this.Left = bounds.Left + (bounds.Width - this.Width) / 2;
                 this.Top = bounds.Top + (bounds.Height - combinedHeight) / 2;
             }
         }
-
 
         #region Events
 
@@ -128,6 +128,7 @@ namespace DICUI
                 return;
             }
 
+            ViewModels.LoggerViewModel.VerboseLogLn("Changed system to: {0}", (SystemTypeComboBox.SelectedItem as KnownSystemComboBoxItem).Name);
             PopulateMediaType();
             EnsureDiscInformation();
         }
@@ -138,10 +139,9 @@ namespace DICUI
             if (e.RemovedItems.Count == 1 && e.AddedItems.Count == 1)
             {
                 _currentMediaType = MediaTypeComboBox.SelectedItem as MediaType?;
+                SetSupportedDriveSpeed();
             }
 
-            // TODO: This is giving people the benefit of the doubt that their change is valid
-            SetSupportedDriveSpeed();
             GetOutputNames();
             EnsureDiscInformation();
         }
@@ -172,6 +172,7 @@ namespace DICUI
         private void ProgressUpdated(object sender, Result value)
         {
             StatusLabel.Content = value.Message;
+            ViewModels.LoggerViewModel.VerboseLogLn(value.Message);
         }
 
         private void MainWindowLocationChanged(object sender, EventArgs e)
@@ -272,7 +273,7 @@ namespace DICUI
 
             ViewModels.LoggerViewModel.VerboseLogLn("Populating systems, {0} systems found.", _systems.Count);
 
-            Dictionary <KnownSystemCategory, List<KnownSystem?>> mapping = _systems
+            Dictionary<KnownSystemCategory, List<KnownSystem?>> mapping = _systems
                 .GroupBy(s => s.Category())
                 .ToDictionary(
                     k => k.Key,
@@ -304,7 +305,7 @@ namespace DICUI
         private void PopulateDrives()
         {
             ViewModels.LoggerViewModel.VerboseLogLn("Scanning for drives..");
-            
+
             // Always enable the disk scan
             DiskScanButton.IsEnabled = true;
 
@@ -316,20 +317,20 @@ namespace DICUI
             {
                 int index = _drives.FindIndex(d => d.MarkedActive);
                 DriveLetterComboBox.SelectedIndex = (index != -1 ? index : 0);
-                StatusLabel.Content = "Valid media found! Choose your Media Type";
+                StatusLabel.Content = "Valid drive found! Choose your Media Type";
                 StartStopButton.IsEnabled = true;
                 CopyProtectScanButton.IsEnabled = true;
 
-                ViewModels.LoggerViewModel.VerboseLogLn("Found {0} drives containing media: {1}", _drives.Count, String.Join(", ", _drives.Select(d => d.Letter)));
+                ViewModels.LoggerViewModel.VerboseLogLn("Found {0} drives: {1}", _drives.Count, String.Join(", ", _drives.Select(d => d.Letter)));
             }
             else
             {
                 DriveLetterComboBox.SelectedIndex = -1;
-                StatusLabel.Content = "No valid media found!";
+                StatusLabel.Content = "No valid drive found!";
                 StartStopButton.IsEnabled = false;
                 CopyProtectScanButton.IsEnabled = false;
 
-                ViewModels.LoggerViewModel.VerboseLogLn("Found no drives contaning valid media.");
+                ViewModels.LoggerViewModel.VerboseLogLn("Found no drives");
             }
         }
 
@@ -369,6 +370,7 @@ namespace DICUI
 
                 QuietMode = _options.QuietMode,
                 ParanoidMode = _options.ParanoidMode,
+                ScanForProtection = _options.ScanForProtection,
                 RereadAmountC2 = _options.RereadAmountForC2,
 
                 System = SystemTypeComboBox.SelectedItem as KnownSystemComboBoxItem,
@@ -379,12 +381,14 @@ namespace DICUI
         /// <summary>
         /// Begin the dumping process using the given inputs
         /// </summary>
-        /// <remarks>
-        /// TODO: Add the scan and output steps back here for label updates
-        /// </remarks>
         private async void StartDumping()
         {
             _env = DetermineEnvironment();
+
+            // Check for the firmware first
+            // TODO: Remove this (and method) once DIC end-to-end logging becomes a thing
+            if (!await _env.DriveHasLatestFimrware())
+                return;
 
             StartStopButton.Content = UIElements.StopDumping;
             CopyProtectScanButton.IsEnabled = false;
@@ -396,6 +400,7 @@ namespace DICUI
             Result result = await _env.StartDumping(progress);
 
             StatusLabel.Content = result ? "Dumping complete!" : result.Message;
+            ViewModels.LoggerViewModel.VerboseLogLn(result ? "Dumping complete!" : result.Message);
             StartStopButton.Content = UIElements.StartDumping;
             CopyProtectScanButton.IsEnabled = true;
 
@@ -465,20 +470,8 @@ namespace DICUI
             KnownSystem? systemType = SystemTypeComboBox.SelectedItem as KnownSystemComboBoxItem;
             MediaType? mediaType = MediaTypeComboBox.SelectedItem as MediaType?;
 
-            if (drive != null
-                && !String.IsNullOrWhiteSpace(drive.VolumeLabel)
-                && !drive.IsFloppy
-                && systemType != null
-                && mediaType != null)
-            {
-                OutputDirectoryTextBox.Text = Path.Combine(_options.DefaultOutputPath, drive.VolumeLabel);
-                OutputFilenameTextBox.Text = drive.VolumeLabel + mediaType.Extension();
-            }
-            else
-            {
-                OutputDirectoryTextBox.Text = _options.DefaultOutputPath;
-                OutputFilenameTextBox.Text = "disc.bin";
-            }
+            OutputDirectoryTextBox.Text = Path.Combine(_options.DefaultOutputPath, drive?.VolumeLabel ?? string.Empty);
+            OutputFilenameTextBox.Text = (drive?.VolumeLabel ?? "disc") + (mediaType.Extension() ?? ".bin");
         }
 
         /// <summary>
@@ -512,32 +505,21 @@ namespace DICUI
         /// <summary>
         /// Set the drive speed based on reported maximum and user-defined option
         /// </summary>
-        private async void SetSupportedDriveSpeed()
+        private void SetSupportedDriveSpeed()
         {
             // Set the drive speed list that's appropriate
             var values = AllowedSpeeds.GetForMediaType(_currentMediaType);
             DriveSpeedComboBox.ItemsSource = values;
-            DriveSpeedComboBox.SelectedIndex = values.Count / 2;
-
-            // Get the current environment
-            _env = DetermineEnvironment();
-
-            // Get the drive speed
-            int speed = await _env.GetDiscSpeed();
-
-            // If we have an invalid speed, we need to jump out
-            // TODO: Should we disable dumping in this case?
-            if (speed == -1)
-                return;
-
-            ViewModels.LoggerViewModel.VerboseLogLn("Determined max drive speed for {0}: {1}.", _env.Drive.Letter, speed);
+            ViewModels.LoggerViewModel.VerboseLogLn("Supported media speeds: {0}", string.Join(",", values));
 
             // Choose the lower of the two speeds between the allowed speeds and the user-defined one
             int chosenSpeed = Math.Min(
-                AllowedSpeeds.GetForMediaType(_currentMediaType).Where(s => s <= speed).Last(),
+                values.Where(s => s <= values[values.Count / 2]).Last(),
                 _options.preferredDumpSpeedCD
             );
 
+            // Set the selected speed
+            ViewModels.LoggerViewModel.VerboseLogLn("Setting drive speed to: {0}", chosenSpeed);
             DriveSpeedComboBox.SelectedValue = chosenSpeed;
         }
 
@@ -575,6 +557,38 @@ namespace DICUI
                 MediaTypeComboBox.SelectedIndex = index;
             else
                 StatusLabel.Content = $"Disc of type '{Converters.MediaTypeToString(_currentMediaType)}' found, but the current system does not support it!";
+        }
+
+        #endregion
+
+        #region UI Helpers
+
+        /// <summary>
+        /// Get pixel coordinates based on DPI scaling
+        /// </summary>
+        /// <param name="bounds">Rectangle representing the bounds to transform</param>
+        /// <returns>Rectangle representing the scaled bounds</returns>
+        private Rectangle GetScaledCoordinates(Rectangle bounds)
+        {
+            using (Graphics g = Graphics.FromHwnd(IntPtr.Zero))
+            {
+                return new Rectangle(
+                TransformCoordinate(bounds.Left, g.DpiX),
+                TransformCoordinate(bounds.Top, g.DpiY),
+                TransformCoordinate(bounds.Width, g.DpiX),
+                TransformCoordinate(bounds.Height, g.DpiY));
+            }
+        }
+
+        /// <summary>
+        /// Transform an individual coordinate using DPI scaling
+        /// </summary>
+        /// <param name="coord">Current integer coordinate</param>
+        /// <param name="dpi">DPI scaling factor</param>
+        /// <returns>Scaled integer coordinate</returns>
+        private int TransformCoordinate(int coord, float dpi)
+        {
+            return (int)(coord / ((double)dpi / 96));
         }
 
         #endregion

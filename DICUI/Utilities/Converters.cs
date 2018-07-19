@@ -534,6 +534,10 @@ namespace DICUI.Utilities
                     return "DVD-Video";
                 case KnownSystem.EnhancedCD:
                     return "Enhanced CD";
+                case KnownSystem.EnhancedDVD:
+                    return "Enhanced DVD";
+                case KnownSystem.EnhancedBD:
+                    return "Enhanced BD";
                 case KnownSystem.HDDVDVideo:
                     return "HD-DVD-Video";
                 case KnownSystem.PalmOS:
@@ -544,6 +548,8 @@ namespace DICUI.Utilities
                     return "Photo CD";
                 case KnownSystem.PlayStationGameSharkUpdates:
                     return "PlayStation GameShark Updates";
+                case KnownSystem.RainbowDisc:
+                    return "Rainbow Disc";
                 case KnownSystem.TaoiKTV:
                     return "Tao iKTV";
                 case KnownSystem.TomyKissSite:

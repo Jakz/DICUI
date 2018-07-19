@@ -57,6 +57,7 @@ namespace DICUI.Utilities
         // extra DIC arguments
         public bool QuietMode;
         public bool ParanoidMode;
+        public bool ScanForProtection;
         public int RereadAmountC2;
 
         // External process information
@@ -69,6 +70,8 @@ namespace DICUI.Utilities
         /// </summary>
         public void CancelDumping()
         {
+            ViewModels.LoggerViewModel.VerboseLogLn("Canceling dumping process...");
+
             try
             {
                 if (dicProcess != null && !dicProcess.HasExited)
@@ -83,7 +86,7 @@ namespace DICUI.Utilities
         /// </summary>
         public async void EjectDisc()
         {
-            ViewModels.LoggerViewModel.VerboseLogLn("Ejecting Disc..");
+            ViewModels.LoggerViewModel.VerboseLogLn($"Ejecting disc in drive {Drive.Letter}");
             
             // Validate that the required program exists
             if (!File.Exists(DICPath))
@@ -106,6 +109,7 @@ namespace DICUI.Utilities
                         Arguments = DICCommandStrings.Eject + " " + Drive.Letter,
                         CreateNoWindow = true,
                         UseShellExecute = false,
+                        RedirectStandardInput = true,
                         RedirectStandardOutput = true,
                     },
                 };
@@ -121,32 +125,16 @@ namespace DICUI.Utilities
         }
 
         /// <summary>
-        /// Get disc speed using DIC
+        /// Gets if the current drive has the latest firmware
         /// </summary>
-        /// <returns>Drive speed if possible, -1 on error</returns>
-        public async Task<int> GetDiscSpeed()
+        /// <returns></returns>
+        public async Task<bool> DriveHasLatestFimrware()
         {
             // Validate that the required program exists
             if (!File.Exists(DICPath))
-                return -1;
+                return false;
 
-            // Validate that the drive is set up
-            if (Drive == null)
-                return -1;
-
-            // Validate we're not trying to get the speed for a floppy disk
-            if (IsFloppy)
-                return -1;
-
-            // Make sure that the current drive is active
-            if (!Drive.MarkedActive)
-                return -1;
-
-            // Get the drive speed directly
-            //int speed = Validators.GetDriveSpeed(Drive);
-            //int speed = Validators.GetDriveSpeedEx(Drive, _currentMediaType);
-
-            // Get the drive speed from DIC, if possible
+            // Use the drive speed command as a quick test
             Process childProcess;
             string output = await Task.Run(() =>
             {
@@ -158,8 +146,8 @@ namespace DICUI.Utilities
                         Arguments = DICCommandStrings.DriveSpeed + " " + Drive.Letter,
                         CreateNoWindow = true,
                         UseShellExecute = false,
-                        RedirectStandardOutput = true,
                         RedirectStandardInput = true,
+                        RedirectStandardOutput = true,
                     },
                 };
                 childProcess.Start();
@@ -174,31 +162,15 @@ namespace DICUI.Utilities
                 return stdout;
             });
 
-            // If a drive or argument was invalid, just exit
-            if (output.Contains("Invalid argument"))
-            {
-                return -1;
-            }
-            // If we get that the firmware is out of date, tell the user
-            else if (output.Contains("[ERROR] This drive isn't latest firmware. Please update."))
+            // If we get the firmware message
+            if (output.Contains("[ERROR] This drive isn't latest firmware. Please update."))
             {
                 MessageBox.Show($"DiscImageCreator has reported that drive {Drive.Letter} is not updated to the most recent firmware. Please update the firmware for your drive and try again.", "Outdated Firmware", MessageBoxButton.OK, MessageBoxImage.Error);
-                return -1;
-            }
-            // Otherwise, if we find the maximum read speed as reported
-            else if (output.Contains("ReadSpeedMaximum:"))
-            {
-                int index = output.IndexOf("ReadSpeedMaximum:");
-                string readspeed = Regex.Match(output.Substring(index), @"ReadSpeedMaximum: [0-9]+KB/sec \(([0-9]*)x\)").Groups[1].Value;
-                if (!Int32.TryParse(readspeed, out int speed) || speed <= 0)
-                {
-                    return -1;
-                }
-
-                return speed;
+                return false;
             }
 
-            return -1;
+            // Otherwise, we know the firmware's good
+            return true;
         }
 
         /// <summary>
@@ -234,30 +206,24 @@ namespace DICUI.Utilities
         {
             Result result = IsValidForDump();
 
-            // is something is wrong in environment return
+            // If the environment is invalid, return
             if (!result)
                 return result;
 
-            // execute DIC
+            // Execute DIC
+            progress?.Report(Result.Success("Executing DiscImageCreator... please wait!"));
             await Task.Run(() => ExecuteDiskImageCreator());
             progress?.Report(Result.Success("DiscImageCreator has finished!"));
 
-            // execute additional tools
-            result = ExecuteAdditionalToolsAfterDIC();
+            // Execute additional tools
+            progress?.Report(Result.Success("Running any additional tools... please wait!"));
+            result = await Task.Run(() => ExecuteAdditionalToolsAfterDIC());
             progress?.Report(result);
 
-            // is something is wrong with additional tools report and return
-            // TODO: don't return, just keep generating output from DIC
-            /*if (!result.Item1)
-            {
-                StatusLabel.Content = result.Item2;
-                StartStopButton.Content = UIElements.StartDumping;
-                return;
-            }*/
-
             // Verify dump output and save it
-            progress?.Report(Result.Success("Gathering submission information..."));
-            result = VerifyAndSaveDumpOutput();
+            progress?.Report(Result.Success("Gathering submission information... please wait!"));
+            result = await Task.Run(() => VerifyAndSaveDumpOutput());
+            progress?.Report(Result.Success("All submission information gathered!"));
 
             return result;
         }
@@ -298,7 +264,7 @@ namespace DICUI.Utilities
 
             // Only fix OutputFilename if it's not blank or null
             if (!String.IsNullOrWhiteSpace(OutputFilename))
-                OutputFilename = new StringBuilder(OutputFilename.Replace('&', '_')).Replace('.', '_', 0, OutputFilename.LastIndexOf('.')).ToString();
+                OutputFilename = new StringBuilder(OutputFilename.Replace('&', '_')).Replace('.', '_', 0, OutputFilename.LastIndexOf('.') == -1 ? 0 : OutputFilename.LastIndexOf('.')).ToString();
         }
 
         /// <summary>
@@ -328,10 +294,10 @@ namespace DICUI.Utilities
                         return Result.Failure("Error! Could not find subdump!");
 
                     ExecuteSubdump();
-                    break;
+                    return Result.Success("subdump has finished!");
             }
 
-            return Result.Success();
+            return Result.Success("No external tools needed!");
         }
 
         /// <summary>
@@ -438,9 +404,14 @@ namespace DICUI.Utilities
                     switch (System)
                     {
                         case KnownSystem.AppleMacintosh:
+                        case KnownSystem.EnhancedCD:
+                        case KnownSystem.EnhancedDVD:
+                        case KnownSystem.EnhancedBD:
                         case KnownSystem.IBMPCCompatible:
+                        case KnownSystem.RainbowDisc:
                             mappings[Template.ISBNField] = Template.OptionalValue;
-                            mappings[Template.CopyProtectionField] = GetCopyProtection() ?? Template.RequiredIfExistsValue;
+                            string protection = GetCopyProtection();
+                            mappings[Template.CopyProtectionField] = (!String.IsNullOrWhiteSpace(protection) ? protection : Template.RequiredIfExistsValue);
                             if (File.Exists(combinedBase + "_subIntention.txt"))
                             {
                                 FileInfo fi = new FileInfo(combinedBase + "_subIntention.txt");
@@ -461,7 +432,7 @@ namespace DICUI.Utilities
                             break;
                         case KnownSystem.SonyPlayStation:
                             mappings[Template.PlaystationEXEDateField] = GetPlayStationEXEDate(Drive.Letter) ?? "";
-                            mappings[Template.PlayStationEDCField] = GetMissingEDCCount(combinedBase + ".img_eccEdc.txt") > 0 ? "No" : "Yes"; // TODO: This needs to be verified
+                            mappings[Template.PlayStationEDCField] = GetMissingEDCCount(combinedBase + ".img_EdcEcc.txt") > 0 ? "No" : "Yes";
                             mappings[Template.PlayStationAntiModchipField] = GetAntiModchipDetected(combinedBase + "_disc.txt") ? "Yes" : "No";
                             mappings[Template.PlayStationLibCryptField] = "No";
                             if (File.Exists(combinedBase + "_subIntention.txt"))
@@ -534,9 +505,14 @@ namespace DICUI.Utilities
                     switch (System)
                     {
                         case KnownSystem.AppleMacintosh:
+                        case KnownSystem.EnhancedCD:
+                        case KnownSystem.EnhancedDVD:
+                        case KnownSystem.EnhancedBD:
                         case KnownSystem.IBMPCCompatible:
+                        case KnownSystem.RainbowDisc:
                             mappings[Template.ISBNField] = Template.OptionalValue;
-                            mappings[Template.CopyProtectionField] = GetCopyProtection() ?? Template.RequiredIfExistsValue;
+                            string protection = GetCopyProtection();
+                            mappings[Template.CopyProtectionField] = (!String.IsNullOrWhiteSpace(protection) ? protection : Template.RequiredIfExistsValue);
                             if (File.Exists(combinedBase + "_subIntention.txt"))
                             {
                                 FileInfo fi = new FileInfo(combinedBase + "_subIntention.txt");
@@ -567,6 +543,7 @@ namespace DICUI.Utilities
 
             return mappings;
         }
+
         /// <summary>
         /// Format the output data in a human readable way, separating each printed line into a new item in the list
         /// </summary>
@@ -639,7 +616,11 @@ namespace DICUI.Utilities
                 switch (System)
                 {
                     case KnownSystem.AppleMacintosh:
+                    case KnownSystem.EnhancedCD:
+                    case KnownSystem.EnhancedDVD:
+                    case KnownSystem.EnhancedBD:
                     case KnownSystem.IBMPCCompatible:
+                    case KnownSystem.RainbowDisc:
                         output.Add(Template.ISBNField + ": " + info[Template.ISBNField]);
                         break;
                 }
@@ -682,7 +663,11 @@ namespace DICUI.Utilities
                 switch (System)
                 {
                     case KnownSystem.AppleMacintosh:
+                    case KnownSystem.EnhancedCD:
+                    case KnownSystem.EnhancedDVD:
+                    case KnownSystem.EnhancedBD:
                     case KnownSystem.IBMPCCompatible:
+                    case KnownSystem.RainbowDisc:
                         output.Add(Template.CopyProtectionField + ": " + info[Template.CopyProtectionField]); output.Add("");
                         break;
                     case KnownSystem.MicrosoftXBOX:
@@ -754,7 +739,7 @@ namespace DICUI.Utilities
                         && File.Exists(combinedBase + "_subError.txt")
                         && File.Exists(combinedBase + "_subInfo.txt")
                         // && File.Exists(combinedBase + "_subIntention.txt")
-                        && File.Exists(combinedBase + "_subReadable.txt")
+                        && (File.Exists(combinedBase + "_subReadable.txt") || File.Exists(combinedBase + "_sub.txt"))
                         && File.Exists(combinedBase + "_volDesc.txt");
                 case MediaType.DVD:
                 case MediaType.HDDVD:
@@ -827,13 +812,9 @@ namespace DICUI.Utilities
         /// <returns>Copy protection scheme if possible, null on error</returns>
         private string GetCopyProtection()
         {
-            MessageBoxResult result = MessageBox.Show("Would you like to scan for copy protection? Warning: This may take a long time depending on the size of the disc!", "Copy Protection Scan", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (result == MessageBoxResult.No || result == MessageBoxResult.Cancel || result == MessageBoxResult.None)
-            {
-                return "(CHECK WITH PROTECTIONID)";
-            }
-
-            return Task.Run(() => Validators.RunProtectionScanOnPath(Drive.Letter + ":\\")).Result;
+            if (ScanForProtection)
+                return Task.Run(() => Validators.RunProtectionScanOnPath(Drive.Letter + ":\\")).GetAwaiter().GetResult();
+            return "(CHECK WITH PROTECTIONID)";
         }
 
         /// <summary>
@@ -930,7 +911,7 @@ namespace DICUI.Utilities
                         return Int64.Parse(line.Remove(0, "Total errors:".Length).Trim());
                     }
 
-                    return -1;
+                    return -1; // TODO: Check this
                 }
                 catch
                 {
@@ -1010,10 +991,10 @@ namespace DICUI.Utilities
                 try
                 {
                     // Fast forward to the layerbreak
-                    while (!sr.ReadLine().Trim().StartsWith("EndDataSector")) ;
+                    while (!sr.ReadLine().Trim().StartsWith("========== SectorLength ==========")) ;
 
                     // Now that we're at the layerbreak line, attempt to get the decimal version
-                    return sr.ReadLine().Split(' ')[1];
+                    return sr.ReadLine().Trim().Split(' ')[1];
                 }
                 catch
                 {
@@ -1043,7 +1024,7 @@ namespace DICUI.Utilities
                 {
                     // Fast forward to the PVD
                     string line = sr.ReadLine();
-                    while (!line.StartsWith("[INFO]"))
+                    while (!line.StartsWith("[INFO] Number of sector(s) where EDC doesn't exist: "))
                     {
                         line = sr.ReadLine();
                     }

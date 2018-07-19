@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Media;
 
 namespace DICUI.UI
@@ -27,6 +22,12 @@ namespace DICUI.UI
         {
             get { return _options.ParanoidMode; }
             set { _options.ParanoidMode = value; }
+        }
+
+        public bool ScanForProtection
+        {
+            get { return _options.ScanForProtection; }
+            set { _options.ScanForProtection = value; }
         }
 
         public bool SkipMediaTypeDetection
@@ -102,5 +103,4 @@ namespace DICUI.UI
         public static OptionsViewModel OptionsViewModel { get; set; }
         public static LoggerViewModel LoggerViewModel { get; set; } = new LoggerViewModel();
     }
-
 }
