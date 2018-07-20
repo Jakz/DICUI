@@ -387,7 +387,7 @@ namespace DICUI
 
             // Check for the firmware first
             // TODO: Remove this (and method) once DIC end-to-end logging becomes a thing
-            if (!await _env.DriveHasLatestFimrware())
+            if (!UIElements.ExperimentalDICLogging && !await _env.DriveHasLatestFimrware())
                 return;
 
             StartStopButton.Content = UIElements.StopDumping;
@@ -400,12 +400,18 @@ namespace DICUI
             Result result = await _env.StartDumping(progress);
 
             StatusLabel.Content = result ? "Dumping complete!" : result.Message;
-            ViewModels.LoggerViewModel.VerboseLogLn(result ? "Dumping complete!" : result.Message);
+
+            //TODO: commented for now
+            /*if (result)
+                ViewModels.LoggerViewModel.VerboseLogLn("Dumping complete!");
+            else
+                ViewModels.LoggerViewModel.VerboseLogLn(LogType.Error, result.Message);
+
             StartStopButton.Content = UIElements.StartDumping;
             CopyProtectScanButton.IsEnabled = true;
 
             if (EjectWhenDoneCheckBox.IsChecked == true)
-                _env.EjectDisc();
+                _env.EjectDisc();*/
         }
 
         /// <summary>

@@ -10,6 +10,7 @@
         public const string StopDumping = "Stop Dumping";
 
         public const int LogWindowMarginFromMainWindow = 10;
+        public const bool ExperimentalDICLogging = true;
     }
 
     /// <summary>

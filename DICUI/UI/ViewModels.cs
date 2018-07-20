@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Windows.Media;
+using DICUI.Data;
+using DICUI.Utilities;
 
 namespace DICUI.UI
 {
@@ -65,6 +68,16 @@ namespace DICUI.UI
                 _options.Save();
             }
         }
+
+        public bool AutoScrollLogToEnd
+        {
+            get { return _options.AutoScrollLogToEnd; }
+            set
+            {
+                _options.AutoScrollLogToEnd = value;
+                _options.Save();
+            }
+        }
     }
 
     public class LoggerViewModel
@@ -88,14 +101,26 @@ namespace DICUI.UI
             }
         }
 
-        public void VerboseLog(string text)
+        public void LaunchProcessForLoggedOutput(Process process)
         {
-            if (ViewModels.OptionsViewModel.VerboseLogging)
-                _logWindow.AppendToTextBox(text, Brushes.Yellow);
+            _logWindow.LaunchProcessForLoggedOutput(process);
         }
 
-        public void VerboseLog(string format, params object[] args) => VerboseLog(string.Format(format, args));
-        public void VerboseLogLn(string format, params object[] args) => VerboseLog(string.Format(format, args) + "\n");
+        public void ManageDICTermination()
+        {
+            _logWindow.GracefullyTerminateProcess();
+        }
+
+        public void VerboseLog(Brush color, string text)
+        {
+            if (ViewModels.OptionsViewModel.VerboseLogging)
+                _logWindow.AppendToTextBox(text, color);
+        }
+
+        public void VerboseLogLn(LogType type, string format, params object[] args) => VerboseLog(type.Color(), string.Format(format, args) + "\n");
+
+        public void VerboseLog(string format, params object[] args) => VerboseLog(Brushes.Yellow, string.Format(format, args));
+        public void VerboseLogLn(string format, params object[] args) => VerboseLog(Brushes.Yellow, string.Format(format, args) + "\n");
     }
 
     public static class ViewModels

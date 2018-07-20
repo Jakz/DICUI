@@ -1,4 +1,5 @@
-﻿using DICUI.Data;
+﻿using System.Windows.Media;
+using DICUI.Data;
 
 namespace DICUI.Utilities
 {
@@ -132,6 +133,24 @@ namespace DICUI.Utilities
                     return "Custom";
                 default:
                     return "";
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extensions for LogType
+    /// </summary>
+    public static class LogTypeExtensions
+    {
+        public static Brush Color(this LogType type)
+        {
+            switch (type)
+            {
+                case LogType.Error:
+                    return Brushes.Red;
+
+                default:
+                    return Brushes.White;
             }
         }
     }

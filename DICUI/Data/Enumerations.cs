@@ -235,4 +235,13 @@
         Cassette,
         CED,
     }
+
+    /// <summary>
+    /// Log Types
+    /// </summary>
+    public enum LogType
+    {
+        Error
+
+    }
 }

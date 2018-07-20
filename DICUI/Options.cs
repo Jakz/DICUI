@@ -23,6 +23,7 @@ namespace DICUI
 
         public bool VerboseLogging { get; set; }
         public bool OpenLogWindowAtStartup { get; set; }
+        public bool AutoScrollLogToEnd { get; set; }
 
         public void Save()
         {
@@ -58,6 +59,8 @@ namespace DICUI
             this.RereadAmountForC2 = Int32.TryParse(ConfigurationManager.AppSettings["RereadAmountForC2"], out int rereadAmountForC2) ? rereadAmountForC2 : 20;
             this.VerboseLogging = Boolean.TryParse(ConfigurationManager.AppSettings["VerboseLogging"], out bool verboseLogging) ? verboseLogging : true;
             this.OpenLogWindowAtStartup = Boolean.TryParse(ConfigurationManager.AppSettings["OpenLogWindowAtStartup"], out bool openLogWindowAtStartup) ? openLogWindowAtStartup : true;
+            this.AutoScrollLogToEnd = Boolean.TryParse(ConfigurationManager.AppSettings["AutoScrollLogToEnd"], out bool autoScrollLogToEnd) ? autoScrollLogToEnd : false;
+
         }
 
 

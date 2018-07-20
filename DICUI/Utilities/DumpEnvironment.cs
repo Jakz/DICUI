@@ -53,6 +53,7 @@ namespace DICUI.Utilities
         public MediaType? Type;
         public bool IsFloppy { get => Drive.IsFloppy; }
         public Parameters DICParameters;
+        public IProgress<Result> Progress;
 
         // extra DIC arguments
         public bool QuietMode;
@@ -74,8 +75,15 @@ namespace DICUI.Utilities
 
             try
             {
-                if (dicProcess != null && !dicProcess.HasExited)
-                    dicProcess.Kill();
+                if (UIElements.ExperimentalDICLogging)
+                {
+                    ViewModels.LoggerViewModel.ManageDICTermination();
+                }
+                else
+                {
+                    if (dicProcess != null && !dicProcess.HasExited)
+                        dicProcess.Kill();
+                }
             }
             catch
             { }
@@ -204,6 +212,8 @@ namespace DICUI.Utilities
         /// </summary>
         public async Task<Result> StartDumping(IProgress<Result> progress)
         {
+            Progress = progress;
+
             Result result = IsValidForDump();
 
             // If the environment is invalid, return
@@ -211,9 +221,11 @@ namespace DICUI.Utilities
                 return result;
 
             // Execute DIC
-            progress?.Report(Result.Success("Executing DiscImageCreator... please wait!"));
-            await Task.Run(() => ExecuteDiskImageCreator());
-            progress?.Report(Result.Success("DiscImageCreator has finished!"));
+            Progress?.Report(Result.Success("Executing DiscImageCreator... please wait!"));
+            ExecuteDiskImageCreator();
+
+            if (UIElements.ExperimentalDICLogging)
+                return result;
 
             // Execute additional tools
             progress?.Report(Result.Success("Running any additional tools... please wait!"));
@@ -226,6 +238,29 @@ namespace DICUI.Utilities
             progress?.Report(Result.Success("All submission information gathered!"));
 
             return result;
+        }
+
+        #endregion
+
+        #region Callbacks to manage logging phases
+
+        void OnDICProcessTermination(object sender, EventArgs e)
+        {
+            if (dicProcess.ExitCode == 0)
+            {
+                dicProcess.Exited -= OnDICProcessTermination;
+                ViewModels.LoggerViewModel.ManageDICTermination();
+
+                // Execute additional tools
+                Progress?.Report(Result.Success("Running any additional tools... please wait!"));
+                Result result = ExecuteAdditionalToolsAfterDIC();
+                Progress?.Report(result);
+
+                // Verify dump output and save it
+                Progress?.Report(Result.Success("Gathering submission information... please wait!"));
+                result = VerifyAndSaveDumpOutput();
+                Progress?.Report(Result.Success("All submission information gathered!"));
+            }
         }
 
         #endregion
@@ -305,8 +340,6 @@ namespace DICUI.Utilities
         /// </summary>
         private void ExecuteDiskImageCreator()
         {
-            ViewModels.LoggerViewModel.VerboseLogLn("Launching DiskImageCreator process.");
-
             dicProcess = new Process()
             {
                 StartInfo = new ProcessStartInfo()
@@ -315,8 +348,18 @@ namespace DICUI.Utilities
                     Arguments = DICParameters.GenerateParameters() ?? "",
                 },
             };
-            dicProcess.Start();
-            dicProcess.WaitForExit();
+
+            if (UIElements.ExperimentalDICLogging)
+            {
+                dicProcess.Exited += OnDICProcessTermination;
+                ViewModels.LoggerViewModel.LaunchProcessForLoggedOutput(dicProcess);
+            }
+            else
+            {
+                ViewModels.LoggerViewModel.VerboseLogLn("Launching DiskImageCreator process.");
+                dicProcess.Start();
+                dicProcess.WaitForExit();
+            }
         }
 
         /// <summary>
