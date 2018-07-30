@@ -453,8 +453,7 @@ namespace DICUI.Utilities
                         case KnownSystem.IBMPCCompatible:
                         case KnownSystem.RainbowDisc:
                             mappings[Template.ISBNField] = Template.OptionalValue;
-                            string protection = GetCopyProtection();
-                            mappings[Template.CopyProtectionField] = (!String.IsNullOrWhiteSpace(protection) ? protection : Template.RequiredIfExistsValue);
+                            mappings[Template.CopyProtectionField] = GetCopyProtection();
                             if (File.Exists(combinedBase + "_subIntention.txt"))
                             {
                                 FileInfo fi = new FileInfo(combinedBase + "_subIntention.txt");
@@ -554,8 +553,7 @@ namespace DICUI.Utilities
                         case KnownSystem.IBMPCCompatible:
                         case KnownSystem.RainbowDisc:
                             mappings[Template.ISBNField] = Template.OptionalValue;
-                            string protection = GetCopyProtection();
-                            mappings[Template.CopyProtectionField] = (!String.IsNullOrWhiteSpace(protection) ? protection : Template.RequiredIfExistsValue);
+                            mappings[Template.CopyProtectionField] = GetCopyProtection();
                             if (File.Exists(combinedBase + "_subIntention.txt"))
                             {
                                 FileInfo fi = new FileInfo(combinedBase + "_subIntention.txt");
@@ -1034,7 +1032,16 @@ namespace DICUI.Utilities
                 try
                 {
                     // Fast forward to the layerbreak
-                    while (!sr.ReadLine().Trim().StartsWith("========== SectorLength ==========")) ;
+                    string line = sr.ReadLine();
+                    while (line != null)
+                    {
+                        // We definitely found a single-layer disc
+                        if (line.Contains("NumberOfLayers: Single Layer"))
+                            return null;
+                        else if (line.Trim().StartsWith("========== SectorLength =========="))
+                            break;
+                        line = sr.ReadLine();
+                    }
 
                     // Now that we're at the layerbreak line, attempt to get the decimal version
                     return sr.ReadLine().Trim().Split(' ')[1];

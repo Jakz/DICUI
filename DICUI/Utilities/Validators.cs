@@ -193,6 +193,9 @@ namespace DICUI.Utilities
                     types.Add(MediaType.CD);
                     types.Add(MediaType.DVD);
                     break;
+                case KnownSystem.KonamieAmusement:
+                    types.Add(MediaType.CD);
+                    break;
                 case KnownSystem.KonamiFirebeat:
                     types.Add(MediaType.CD);
                     break;
@@ -575,7 +578,7 @@ namespace DICUI.Utilities
                 return ProtectionFind.Scan(path);
             });
 
-            if (found == null)
+            if (found == null || found.Count == 0)
                 return "None found";
 
             return string.Join("\n", found.Select(kvp => kvp.Key + ": " + kvp.Value).ToArray());
