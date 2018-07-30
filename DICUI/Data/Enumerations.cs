@@ -245,4 +245,14 @@
         Error
 
     }
+
+    /// <summary>
+    /// Log Snap Mode
+    /// </summary>
+    public enum LogSnapMode
+    {
+        None,
+        Vertical,
+        Horizontal
+    }
 }

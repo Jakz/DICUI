@@ -121,8 +121,26 @@ namespace DICUI
 
         public void AdjustPositionToMainWindow()
         {
-            this.Left = _mainWindow.Left;
-            this.Top = _mainWindow.Top + _mainWindow.Height + UIElements.LogWindowMarginFromMainWindow;
+            switch (ViewModels.OptionsViewModel.LogWindowSnapMode)
+            {
+                case LogSnapMode.Vertical:
+                {
+                    this.Left = _mainWindow.Left;
+                    this.Top = _mainWindow.Top + _mainWindow.Height + UIElements.LogWindowMarginFromMainWindow;
+                    break;
+                }
+                case LogSnapMode.Horizontal:
+                {
+                    this.Left = _mainWindow.Left + _mainWindow.Width + UIElements.LogWindowMarginFromMainWindow;
+                    this.Top = _mainWindow.Top;
+                    break;
+                }
+                case LogSnapMode.None:
+                {
+                    /* do nothing */
+                    break;
+                }
+            }
         }
 
         public void GracefullyTerminateProcess()

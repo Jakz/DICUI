@@ -24,6 +24,7 @@ namespace DICUI
         public bool VerboseLogging { get; set; }
         public bool OpenLogWindowAtStartup { get; set; }
         public bool AutoScrollLogToEnd { get; set; }
+        public LogSnapMode LogWindowSnapMode { get; set; }
 
         public void Save()
         {
@@ -60,7 +61,7 @@ namespace DICUI
             this.VerboseLogging = Boolean.TryParse(ConfigurationManager.AppSettings["VerboseLogging"], out bool verboseLogging) ? verboseLogging : true;
             this.OpenLogWindowAtStartup = Boolean.TryParse(ConfigurationManager.AppSettings["OpenLogWindowAtStartup"], out bool openLogWindowAtStartup) ? openLogWindowAtStartup : true;
             this.AutoScrollLogToEnd = Boolean.TryParse(ConfigurationManager.AppSettings["AutoScrollLogToEnd"], out bool autoScrollLogToEnd) ? autoScrollLogToEnd : false;
-
+            this.LogWindowSnapMode = Enum.TryParse(ConfigurationManager.AppSettings["LogWindowSnapMode"], out LogSnapMode logSnapMode) ? logSnapMode : LogSnapMode.None;
         }
 
 

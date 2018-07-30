@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows.Media;
 using DICUI.Data;
@@ -78,6 +79,27 @@ namespace DICUI.UI
                 _options.Save();
             }
         }
+
+        public LogSnapMode LogWindowSnapMode
+        {
+            get { return _options.LogWindowSnapMode; }
+            set
+            {
+                _options.LogWindowSnapMode = value;
+                _options.Save();
+            }
+
+        }
+
+        public List<LogSnapMode> LogWindowSnapModes
+        {
+            get
+            {
+                LogSnapMode[] modes = (LogSnapMode[])Enum.GetValues(typeof(LogSnapMode));
+                return new List<LogSnapMode>(modes);
+            }
+        }
+
     }
 
     public class LoggerViewModel

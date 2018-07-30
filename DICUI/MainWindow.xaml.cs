@@ -49,12 +49,23 @@ namespace DICUI
 
             if (_options.OpenLogWindowAtStartup)
             {
-                this.WindowStartupLocation = WindowStartupLocation.Manual;
-                double combinedHeight = this.Height + _logWindow.Height + UIElements.LogWindowMarginFromMainWindow;
-                Rectangle bounds = GetScaledCoordinates(WinForms.Screen.PrimaryScreen.WorkingArea);
+                LogSnapMode snapMode = ViewModels.OptionsViewModel.LogWindowSnapMode;
 
-                this.Left = bounds.Left + (bounds.Width - this.Width) / 2;
-                this.Top = bounds.Top + (bounds.Height - combinedHeight) / 2;
+                if (snapMode != LogSnapMode.None)
+                {
+                    double combinedHeight = this.Height + (snapMode == LogSnapMode.Vertical ? _logWindow.Height + UIElements.LogWindowMarginFromMainWindow : 0);
+                    double combinedWidth = this.Width + (snapMode == LogSnapMode.Horizontal ? _logWindow.Width + UIElements.LogWindowMarginFromMainWindow : 0);
+                    Rectangle bounds = GetScaledCoordinates(WinForms.Screen.PrimaryScreen.WorkingArea);
+
+                    this.WindowStartupLocation = WindowStartupLocation.Manual;
+
+                    this.Left = bounds.Left + (bounds.Width - combinedWidth) / 2;
+                    this.Top = bounds.Top + (bounds.Height - combinedHeight) / 2;
+                }
+                else
+                {
+                    _logWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                }
             }
         }
 
