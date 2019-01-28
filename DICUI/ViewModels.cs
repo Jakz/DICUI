@@ -66,6 +66,16 @@ namespace DICUI
                 _options.Save();
             }
         }
+
+        public bool SaveLogToFile
+        {
+            get { return _options.SaveLogToFile; }
+            set
+            {
+                _options.SaveLogToFile = value;
+                _options.Save();
+            }
+        }
     }
 
     public class LoggerViewModel

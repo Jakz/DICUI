@@ -53,13 +53,24 @@ namespace DICUI
             this.PreferredDumpSpeedDVD = Int32.TryParse(ConfigurationManager.AppSettings["preferredDumpSpeedDVD"], out int maxDumpSpeedDVD) ? maxDumpSpeedDVD : 24;
             this.PreferredDumpSpeedBD = Int32.TryParse(ConfigurationManager.AppSettings["preferredDumpSpeedBD"], out int maxDumpSpeedBD) ? maxDumpSpeedBD : 16;
 
-            this.QuietMode = Boolean.TryParse(ConfigurationManager.AppSettings["QuietMode"], out bool quietMode) ? quietMode : false;
-            this.ParanoidMode = Boolean.TryParse(ConfigurationManager.AppSettings["ParanoidMode"], out bool paranoidMode) ? paranoidMode : false;
-            this.ScanForProtection = Boolean.TryParse(ConfigurationManager.AppSettings["ScanForProtection"], out bool scanForProtection) ? scanForProtection : true;
-            this.SkipMediaTypeDetection = Boolean.TryParse(ConfigurationManager.AppSettings["SkipMediaTypeDetection"], out bool skipMediaTypeDetection) ? skipMediaTypeDetection : false;
             this.RereadAmountForC2 = Int32.TryParse(ConfigurationManager.AppSettings["RereadAmountForC2"], out int rereadAmountForC2) ? rereadAmountForC2 : 20;
-            this.VerboseLogging = Boolean.TryParse(ConfigurationManager.AppSettings["VerboseLogging"], out bool verboseLogging) ? verboseLogging : true;
-            this.OpenLogWindowAtStartup = Boolean.TryParse(ConfigurationManager.AppSettings["OpenLogWindowAtStartup"], out bool openLogWindowAtStartup) ? openLogWindowAtStartup : true;
+
+            Tuple<String, bool>[] booleanKeys =
+            {
+                Tuple.Create("QuietMode", false),
+                Tuple.Create("ParanoidMode", false),
+                Tuple.Create("ScanForProtection", true),
+                Tuple.Create("SkipMediaTypeDetection", false),
+                Tuple.Create("VerboseLogging", true),
+                Tuple.Create("OpenLogWindowAtStartup", true),
+                Tuple.Create("SaveLogToFile", false),
+            };
+
+            foreach (var tuple in booleanKeys)
+            {
+                bool value = Boolean.TryParse(ConfigurationManager.AppSettings[tuple.Item1], out bool tmp) ? tmp : tuple.Item2;
+                GetType().GetProperty(tuple.Item1, BindingFlags.Public | BindingFlags.Instance).SetValue(this, value);
+            }
         }
 
 
