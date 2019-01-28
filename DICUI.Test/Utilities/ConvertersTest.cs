@@ -8,14 +8,14 @@ namespace DICUI.Test.Utilities
     public class ConvertersTest
     {
         [Theory]
-        [InlineData(DICCommand.Audio, MediaType.CD)]
+        [InlineData(DICCommand.Audio, MediaType.CDROM)]
         [InlineData(DICCommand.BluRay, MediaType.BluRay)]
         [InlineData(DICCommand.Close, null)]
-        [InlineData(DICCommand.CompactDisc, MediaType.CD)]
-        [InlineData(DICCommand.Data, MediaType.CD)]
+        [InlineData(DICCommand.CompactDisc, MediaType.CDROM)]
+        [InlineData(DICCommand.Data, MediaType.CDROM)]
         [InlineData(DICCommand.DigitalVideoDisc, MediaType.DVD)]
         [InlineData(DICCommand.Eject, null)]
-        [InlineData(DICCommand.Floppy, MediaType.Floppy)]
+        [InlineData(DICCommand.Floppy, MediaType.FloppyDisk)]
         [InlineData(DICCommand.GDROM, MediaType.GDROM)]
         [InlineData(DICCommand.MDS, null)]
         [InlineData(DICCommand.Reset, null)]
@@ -54,11 +54,11 @@ namespace DICUI.Test.Utilities
         }
 
         [Theory]
-        [InlineData(MediaType.CD, ".bin")]
+        [InlineData(MediaType.CDROM, ".bin")]
         [InlineData(MediaType.DVD, ".iso")]
         [InlineData(MediaType.LaserDisc, ".raw")]
-        [InlineData(MediaType.WiiUOpticalDisc, ".wud")]
-        [InlineData(MediaType.Floppy, ".img")]
+        [InlineData(MediaType.NintendoWiiUOpticalDisc, ".wud")]
+        [InlineData(MediaType.FloppyDisk, ".img")]
         [InlineData(MediaType.Cassette, ".wav")]
         [InlineData(MediaType.NONE, null)]
         public void MediaTypeToExtensionTest(MediaType? mediaType, string expected)
@@ -68,8 +68,8 @@ namespace DICUI.Test.Utilities
         }
 
         [Theory]
-        [InlineData(MediaType.CD, "CD-ROM")]
-        [InlineData(MediaType.LaserDisc, "LaserDisc")]
+        [InlineData(MediaType.CDROM, "CD-ROM")]
+        [InlineData(MediaType.LaserDisc, "LD-ROM / LV-ROM")]
         [InlineData(MediaType.NONE, "Unknown")]
         public void MediaTypeToStringTest(MediaType? mediaType, string expected)
         {
@@ -82,7 +82,6 @@ namespace DICUI.Test.Utilities
         [InlineData(KnownSystem.NECPC88, "NEC PC-88")]
         [InlineData(KnownSystem.KonamiPython, "Konami Python")]
         [InlineData(KnownSystem.HDDVDVideo, "HD-DVD-Video")]
-        [InlineData(KnownSystem.Custom, "Custom Input")]
         [InlineData(KnownSystem.NONE, "Unknown")]
         public void KnownSystemToStringTest(KnownSystem? knownSystem, string expected)
         {
@@ -97,7 +96,7 @@ namespace DICUI.Test.Utilities
             KnownSystem[] markers = { KnownSystem.MarkerArcadeEnd, KnownSystem.MarkerConsoleEnd, KnownSystem.MarkerComputerEnd, KnownSystem.MarkerOtherEnd };
 
             values.ForEach(system => {
-                if (system == KnownSystem.NONE || system == KnownSystem.Custom)
+                if (system == KnownSystem.NONE)
                     return;
 
                 // we check that the category is the first category value higher than the system

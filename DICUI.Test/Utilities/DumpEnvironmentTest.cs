@@ -1,4 +1,6 @@
-﻿using DICUI.Data;
+﻿using System;
+using System.Linq;
+using DICUI.Data;
 using DICUI.Utilities;
 using Xunit;
 
@@ -9,9 +11,9 @@ namespace DICUI.Test
         [Theory]
         [InlineData(null, 'D', false, MediaType.NONE, false)]
         [InlineData("", 'D', false, MediaType.NONE, false)]
-        [InlineData("cd F test.bin 8 /c2 20", 'F', false, MediaType.CD, true)]
-        [InlineData("fd A test.img", 'A', true, MediaType.Floppy, true)]
-        [InlineData("dvd X test.iso 8 /raw", 'X', false, MediaType.Floppy, false)]
+        [InlineData("cd F test.bin 8 /c2 20", 'F', false, MediaType.CDROM, true)]
+        [InlineData("fd A test.img", 'A', true, MediaType.FloppyDisk, true)]
+        [InlineData("dvd X test.iso 8 /raw", 'X', false, MediaType.FloppyDisk, false)]
         [InlineData("stop D", 'D', false, MediaType.DVD, true)]
         public void ParametersValidTest(string parameters, char letter, bool isFloppy, MediaType? mediaType, bool expected)
         {
@@ -24,30 +26,6 @@ namespace DICUI.Test
 
             bool actual = env.ParametersValid();
             Assert.Equal(expected, actual);
-        }
-
-        [Theory]
-        [InlineData(null, null, null, new char(), null, null)]
-        [InlineData("", null, null, new char(), null, null)]
-        [InlineData("cd F test.bin 8 /c2 20", MediaType.CD, KnownSystem.IBMPCCompatible, 'F', "", "test.bin")]
-        [InlineData("fd A blah\\test.img", MediaType.Floppy, KnownSystem.IBMPCCompatible, 'A', "blah", "test.img")]
-        [InlineData("dvd X super\\blah\\test.iso 8 /raw", MediaType.GameCubeGameDisc, KnownSystem.NintendoGameCube, 'X', "super\\blah", "test.iso")]
-        [InlineData("stop D", null, null, 'D', null, null)]
-        public void AdjustForCustomConfigurationTest(string parameters, MediaType? expectedMediaType, KnownSystem? expectedKnownSystem, char expectedDriveLetter, string expectedOutputDirectory, string expectedOutputFilename)
-        {
-            var env = new DumpEnvironment
-            {
-                DICParameters = new Parameters(parameters),
-                System = KnownSystem.Custom,
-            };
-
-            env.AdjustForCustomConfiguration();
-            Assert.Equal(new Parameters(parameters), env.DICParameters);
-            Assert.Equal(expectedMediaType, env.Type);
-            Assert.Equal(expectedKnownSystem, env.System);
-            Assert.Equal(expectedDriveLetter, env.Drive.Letter);
-            Assert.Equal(expectedOutputDirectory, env.OutputDirectory);
-            Assert.Equal(expectedOutputFilename, env.OutputFilename);
         }
 
         [Theory]
@@ -80,9 +58,9 @@ namespace DICUI.Test
         }
 
         [Theory]
-        [InlineData(MediaType.CD)]
+        [InlineData(MediaType.CDROM)]
         [InlineData(MediaType.DVD)]
-        [InlineData(MediaType.Floppy)]
+        [InlineData(MediaType.FloppyDisk)]
         [InlineData(MediaType.LaserDisc)]
         public void FoundAllFilesTest(MediaType? mediaType)
         {
@@ -92,11 +70,11 @@ namespace DICUI.Test
         }
 
         [Theory]
-        [InlineData(KnownSystem.AppleMacintosh, MediaType.CD)]
-        [InlineData(KnownSystem.PhilipsCDi, MediaType.CD)]
-        [InlineData(KnownSystem.SegaSaturn, MediaType.CD)]
-        [InlineData(KnownSystem.SonyPlayStation, MediaType.CD)]
-        [InlineData(KnownSystem.SonyPlayStation2, MediaType.CD)]
+        [InlineData(KnownSystem.AppleMacintosh, MediaType.CDROM)]
+        [InlineData(KnownSystem.PhilipsCDi, MediaType.CDROM)]
+        [InlineData(KnownSystem.SegaSaturn, MediaType.CDROM)]
+        [InlineData(KnownSystem.SonyPlayStation, MediaType.CDROM)]
+        [InlineData(KnownSystem.SonyPlayStation2, MediaType.CDROM)]
         [InlineData(KnownSystem.AppleMacintosh, MediaType.DVD)]
         [InlineData(KnownSystem.DVDVideo, MediaType.DVD)]
         [InlineData(KnownSystem.MicrosoftXBOX, MediaType.DVD)]

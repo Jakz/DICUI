@@ -1,5 +1,9 @@
 # version format
-version: 1.06_{build}
+version: 1.12-{build}
+
+# pull request template
+pull_requests:
+  do_not_increment_build_number: true
 
 # vm template
 image: Visual Studio 2017
@@ -10,7 +14,7 @@ environment:
 
 # msbuild configuration
 platform:
-- AnyCPU
+- Any CPU
 configuration:
 - Debug
 
@@ -28,9 +32,20 @@ build:
 
 # post-build step
 after_build:
-- 7z a dicui_%APPVEYOR_BUILD_VERSION%.zip DICUI\bin\Debug
+- ps: appveyor DownloadFile https://github.com/saramibreak/DiscImageCreator/files/2500541/DiscImageCreator_20181022.zip
+- ps: appveyor DownloadFile http://www.rawdump.net/tools/subdump_fua_0x28.zip
+- 7z e DiscImageCreator_20181022.zip -oDICUI\bin\Debug\Programs Release_ANSI\*
+- 7z e DiscImageCreator_20181022.zip -oDICUI.Forms\bin\Debug\Programs Release_ANSI\*
+- 7z e subdump_fua_0x28.zip -oDICUI\bin\Debug *
+- 7z e subdump_fua_0x28.zip -oDICUI.Forms\bin\Debug *
+- mv DICUI\bin\Debug\subdump_fua_0x28.exe DICUI\bin\Debug\subdump.exe
+- mv DICUI.Forms\bin\Debug\subdump_fua_0x28.exe DICUI.Forms\bin\Debug\subdump.exe
+- 7z a DICUI.zip DICUI\bin\Debug\*
+- 7z a DICUI-Winforms.zip DICUI.Forms\bin\Debug\*
 
 # artifact linking
 artifacts:
-- path: dicui_$(version).zip
+- path: DICUI.zip
   name: DICUI
+- path: DICUI-Winforms.zip
+  name: DICUI Winforms

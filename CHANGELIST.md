@@ -1,3 +1,36 @@
+### 1.12 (2019-01-27)
+- Added a few new systems and formats
+- Added new DIC commands and flags
+- Updated the `!submissionInfo.txt` file order
+- Fixed Audio CD handling
+- Added Sega CD / Mega CD header extraction
+- Readded Floppy Disk as a supported format
+- And more! See the full Git commit list for more details
+
+### 1.11 (2018-09-20)
+
+- Fix formatting of XBOX and XBOX 360 security sector output
+- Add new XBOX swap commands and outputs
+- Fixes for some PlayStation 2 and 4 outputs
+- Added external programs to AppVeyor builds
+- Fixed `.` in path issues with DIC; attempted to fix issues with `&`
+- Combined XBOX 360 XGD 2/3 due to new DIC support with Kreon drives
+- Fixed (semi-)longstanding bug with XBOX disc layer detection
+- Added DVD-Video protection output
+- Made custom parameters work a little more intuitively
+- Added *EXPERIMENTAL* Winforms-based UI
+- And more! See the full Git commit list for more details
+
+### 1.10 (2018-07-29)
+
+- Added many new options for user customization
+- Added unit testing and an AppVeyor build
+- Many code refactorings
+- **LOG WINDOW**
+- Separated out protection scan and Unshield ports to new projects
+- Added "empty drive" support; should help with 3DO and HFS dumping
+- And much more! See the full Git commit list for more details
+
 ### 1.07 (2018-06-27)
 
 - Separated system and media type for easier navigation
