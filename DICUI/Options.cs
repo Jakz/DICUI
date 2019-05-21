@@ -26,6 +26,9 @@ namespace DICUI
         public bool OpenLogWindowAtStartup { get; set; }
         public bool SaveLogToFile { get; set; }
 
+        public string Username { get; set; }
+        public string Password { get; set; }
+
         public void Save()
         {
             Configuration configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
@@ -55,6 +58,9 @@ namespace DICUI
             this.PreferredDumpSpeedBD = Int32.TryParse(ConfigurationManager.AppSettings["preferredDumpSpeedBD"], out int maxDumpSpeedBD) ? maxDumpSpeedBD : 16;
 
             this.RereadAmountForC2 = Int32.TryParse(ConfigurationManager.AppSettings["RereadAmountForC2"], out int rereadAmountForC2) ? rereadAmountForC2 : 20;
+
+            this.Username = ConfigurationManager.AppSettings["username"] ?? "";
+            this.Password = ConfigurationManager.AppSettings["password"] ?? "";
 
             Tuple<String, bool>[] booleanKeys =
             {
@@ -95,7 +101,7 @@ namespace DICUI
                     return PreferredDumpSpeedCD;
                 case MediaType.DVD:
                 case MediaType.HDDVD:
-                case MediaType.NintendoGameCube:
+                case MediaType.NintendoGameCubeGameDisc:
                 case MediaType.NintendoWiiOpticalDisc:
                     return PreferredDumpSpeedDVD;
                 case MediaType.BluRay:

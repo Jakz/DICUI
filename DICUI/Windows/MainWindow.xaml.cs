@@ -291,7 +291,7 @@ namespace DICUI.Windows
                 .ToDictionary(
                     k => k.Key,
                     v => v
-                        .OrderBy(s => s.Name())
+                        .OrderBy(s => s.LongName())
                         .ToList()
                 );
 
@@ -386,6 +386,9 @@ namespace DICUI.Windows
                 ParanoidMode = _options.ParanoidMode,
                 ScanForProtection = _options.ScanForProtection,
                 RereadAmountC2 = _options.RereadAmountForC2,
+
+                Username = _options.Username,
+                Password = _options.Password,
 
                 System = SystemTypeComboBox.SelectedItem as KnownSystemComboBoxItem,
                 Type = MediaTypeComboBox.SelectedItem as MediaType?,
@@ -589,7 +592,7 @@ namespace DICUI.Windows
                     break;
                 case MediaType.DVD:
                 case MediaType.HDDVD:
-                case MediaType.NintendoGameCube:
+                case MediaType.NintendoGameCubeGameDisc:
                 case MediaType.NintendoWiiOpticalDisc:
                     preferred = _options.PreferredDumpSpeedDVD;
                     break;
@@ -628,7 +631,7 @@ namespace DICUI.Windows
             {
                 ViewModels.LoggerViewModel.VerboseLog("Trying to detect media type for drive {0}.. ", drive.Letter);
                 _currentMediaType = Validators.GetDiscType(drive.Letter);
-                ViewModels.LoggerViewModel.VerboseLogLn(_currentMediaType == null ? "unable to detect." : ("detected " + _currentMediaType.Name() + "."));
+                ViewModels.LoggerViewModel.VerboseLogLn(_currentMediaType == null ? "unable to detect." : ("detected " + _currentMediaType.LongName() + "."));
             }
         }
 
@@ -646,7 +649,7 @@ namespace DICUI.Windows
             if (index != -1)
                 MediaTypeComboBox.SelectedIndex = index;
             else
-                StatusLabel.Content = $"Disc of type '{Converters.MediaTypeToString(_currentMediaType)}' found, but the current system does not support it!";
+                StatusLabel.Content = $"Disc of type '{Converters.LongName(_currentMediaType)}' found, but the current system does not support it!";
         }
 
         /// <summary>
@@ -678,7 +681,7 @@ namespace DICUI.Windows
             else
                 outputFilename = OutputFilenameTextBox.Text;
 
-            MediaType? mediaType = Converters.BaseCommmandToMediaType(_env.DICParameters.Command);
+            MediaType? mediaType = _env.DICParameters.Command.ToMediaType();
             int mediaTypeIndex = _mediaTypes.IndexOf(mediaType);
             if (mediaTypeIndex > -1)
                 MediaTypeComboBox.SelectedIndex = mediaTypeIndex;
