@@ -3,19 +3,17 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
-using System.Windows.Interop;
-using System.Windows.Media;
+using System.Windows.Forms;
+using System.Windows.Threading;
 
-namespace DICUI.Windows
+namespace DICUI.Forms.Windows
 {
-    public partial class LogWindow : Window
+    public partial class LogWindow : Form
     {
         private const int GWL_STYLE = -16;
         private const int WS_SYSMENU = 0x80000;
@@ -26,8 +24,6 @@ namespace DICUI.Windows
 
         private MainWindow _mainWindow;
 
-        private FlowDocument _document;
-        private Paragraph _paragraph;
         private List<Matcher> _matchers;
 
         volatile Process _process;
@@ -38,11 +34,6 @@ namespace DICUI.Windows
 
             this._mainWindow = mainWindow;
 
-            _document = new FlowDocument();
-            _paragraph = new Paragraph();
-            _document.Blocks.Add(_paragraph);
-            output.Document = _document;
-
             _matchers = new List<Matcher>();
 
             _matchers.Add(new Matcher(
@@ -52,10 +43,10 @@ namespace DICUI.Windows
                     if (UInt32.TryParse(match.Groups[1].Value, out uint current) && UInt32.TryParse(match.Groups[2].Value, out uint total))
                     {
                         float percentProgress = (current / (float)total) * 100;
-                        progressBar.Value = percentProgress;
-                        progressLabel.Text = string.Format("Descrambling image.. ({0:##.##}%)", percentProgress);
+                        progressBar.Value = (int)percentProgress;
+                        //progressBar.Text = string.Format("Descrambling image.. ({0:##.##}%)", percentProgress);
                     }
-            }));
+                }));
 
             _matchers.Add(new Matcher(
                 @"Creating .scm (LBA)",
@@ -64,10 +55,10 @@ namespace DICUI.Windows
                     if (UInt32.TryParse(match.Groups[1].Value, out uint current) && UInt32.TryParse(match.Groups[2].Value, out uint total))
                     {
                         float percentProgress = (current / (float)total) * 100;
-                        progressBar.Value = percentProgress;
-                        progressLabel.Text = string.Format("Creating scrambled image.. ({0:##.##}%)", percentProgress);
+                        progressBar.Value = (int)percentProgress;
+                        //progressBar.Text = string.Format("Creating scrambled image.. ({0:##.##}%)", percentProgress);
                     }
-            }));
+                }));
 
             _matchers.Add(new Matcher(
                 "Checking sectors (LBA)",
@@ -76,10 +67,10 @@ namespace DICUI.Windows
                     if (UInt32.TryParse(match.Groups[1].Value, out uint current) && UInt32.TryParse(match.Groups[2].Value, out uint total))
                     {
                         float percentProgress = (current / (float)total) * 100;
-                        progressBar.Value = percentProgress;
-                        progressLabel.Text = string.Format("Checking for errors.. ({0:##.##}%)", percentProgress);
+                        progressBar.Value = (int)percentProgress;
+                        //progressBar.Text = string.Format("Checking for errors.. ({0:##.##}%)", percentProgress);
                     }
-            }));
+                }));
 
             _matchers.Add(new Matcher(
                 "Scanning sector (LBA)",
@@ -88,15 +79,20 @@ namespace DICUI.Windows
                     if (UInt32.TryParse(match.Groups[1].Value, out uint current) && UInt32.TryParse(match.Groups[2].Value, out uint total))
                     {
                         float percentProgress = (current / (float)total) * 100;
-                        progressBar.Value = percentProgress;
-                        progressLabel.Text = string.Format("Scanning sectors for protection.. ({0:##.##}%)", percentProgress);
+                        progressBar.Value = (int)percentProgress;
+                        //progressBar.Text = string.Format("Scanning sectors for protection.. ({0:##.##}%)", percentProgress);
                     }
                 }));
         }
 
+        protected override bool ShowWithoutActivation
+        {
+            get { return true; }
+        }
+
         public void StartDump(DumpEnvironment env, string args)
         {
-            AppendToTextBox(string.Format("Launching DIC with args: {0}\r\n", args), Brushes.Orange);
+            AppendToTextBox(string.Format("Launching DIC with args: {0}\r\n", args), System.Drawing.Color.Orange);
 
             Task.Run(() =>
             {
@@ -116,11 +112,11 @@ namespace DICUI.Windows
                 StreamState stdoutState = new StreamState(false);
                 StreamState stderrState = new StreamState(true);
 
-                //_cmd.ErrorDataReceived += (process, text) => Dispatcher.Invoke(() => UpdateConsole(text.Data, Brushes.Red));
+                //_cmd.ErrorDataReceived += (process, text) => Dispatcher.CurrentDispatcher.Invoke(() => UpdateConsole(text.Data, Brushes.Red));
                 _process.Start();
 
-                var _1 = ConsumeOutput(_process.StandardOutput, s => Dispatcher.Invoke(() => UpdateConsole(s, stdoutState)));
-                var _2 = ConsumeOutput(_process.StandardError, s => Dispatcher.Invoke(() => UpdateConsole(s, stderrState)));
+                var _1 = ConsumeOutput(_process.StandardOutput, s => Dispatcher.CurrentDispatcher.Invoke(() => UpdateConsole(s, stdoutState)));
+                var _2 = ConsumeOutput(_process.StandardError, s => Dispatcher.CurrentDispatcher.Invoke(() => UpdateConsole(s, stderrState)));
 
                 _process.EnableRaisingEvents = true;
                 _process.Exited += OnProcessExit;
@@ -131,6 +127,7 @@ namespace DICUI.Windows
         {
             this.Left = _mainWindow.Left;
             this.Top = _mainWindow.Top + _mainWindow.Height + Constants.LogWindowMarginFromMainWindow;
+            this.BringToFront();
         }
 
         private void GracefullyTerminateProcess()
@@ -142,29 +139,28 @@ namespace DICUI.Windows
 
                 if (isForced)
                 {
-                    AppendToTextBox("\r\nForcefully Killing the process\r\n", Brushes.Red);
+                    AppendToTextBox("\r\nForcefully Killing the process\r\n", System.Drawing.Color.Red);
                     _process.Kill();
                     _process.WaitForExit();
                 }
 
-                AppendToTextBox(string.Format("\r\nExit Code: {0}\r\n", _process.ExitCode), _process.ExitCode == 0 ? Brushes.Green : Brushes.Red);
-
+                AppendToTextBox(string.Format("\r\nExit Code: {0}\r\n", _process.ExitCode), _process.ExitCode == 0 ? System.Drawing.Color.Green : System.Drawing.Color.Red);
                 if (_process.ExitCode == 0)
                 {
-                    Dispatcher.Invoke(() =>
+                    Dispatcher.CurrentDispatcher.Invoke(() =>
                     {
-                        progressLabel.Text = "Done!";
+                        //progressBar.Text = "Done!";
                         progressBar.Value = 100;
-                        progressBar.Foreground = Brushes.Green;
+                        progressBar.ForeColor = System.Drawing.Color.Green;
                     });
                 }
                 else
                 {
-                    Dispatcher.Invoke(() =>
+                    Dispatcher.CurrentDispatcher.Invoke(() =>
                     {
-                        progressLabel.Text = isForced ? "Aborted by user" : "Error, please check log!";
+                        //progressBar.Text = isForced ? "Aborted by user" : "Error, please check log!";
                         progressBar.Value = 100;
-                        progressBar.Foreground = Brushes.Red;
+                        progressBar.ForeColor = System.Drawing.Color.Red;
                     });
                 }
 
@@ -174,9 +170,9 @@ namespace DICUI.Windows
             _process = null;
         }
 
-        private void ScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
+        private void ScrollViewer_SizeChanged(object sender, EventArgs e)
         {
-            outputViewer.ScrollToBottom();
+            output.ScrollToCaret();
         }
 
         async Task ConsumeOutput(TextReader reader, Action<string> callback)
@@ -255,21 +251,19 @@ namespace DICUI.Windows
             public void Set(State state) => this.state = state;
         }
 
-        public void AppendToTextBox(string text, Brush color)
+        public void AppendToTextBox(string text, System.Drawing.Color color)
         {
-            if (Application.Current.Dispatcher.CheckAccess())
+            if (Dispatcher.CurrentDispatcher.CheckAccess())
             {
-                Run run = new Run(text) { Foreground = color };
-                _paragraph.Inlines.Add(run);
+                output.ForeColor = color;
+                output.AppendText(text);
             }
             else
-            {
-                Dispatcher.Invoke(() =>
+                Dispatcher.CurrentDispatcher.Invoke(() =>
                 {
-                    Run run = new Run(text) { Foreground = color };
-                    _paragraph.Inlines.Add(run);
+                    output.ForeColor = color;
+                    output.AppendText(text);
                 });
-            }
         }
 
         private void UpdateConsole(string text, StreamState state)
@@ -299,12 +293,12 @@ namespace DICUI.Windows
                                 {
                                     string buffer = state.Fetch();
 
-                                    AppendToTextBox(buffer, state.isError ? Brushes.Red : Brushes.White);
+                                    AppendToTextBox(buffer, state.isError ? System.Drawing.Color.Red : System.Drawing.Color.White);
 
                                     if (!state.isError)
                                         ProcessStringForProgressBar(buffer);
                                 }
-                                _paragraph.Inlines.Add(new LineBreak());
+                                output.AppendText(Environment.NewLine);
                                 state.Clear();
                                 state.Set(StreamState.State.BEGIN);
                                 break;
@@ -313,12 +307,12 @@ namespace DICUI.Windows
                         default:
                             if (state.Is(StreamState.State.READ_CARRIAGE) && state.HasData())
                             {
-                                if (!(_paragraph.Inlines.LastInline is LineBreak))
-                                    _paragraph.Inlines.Remove(_paragraph.Inlines.LastInline);
+                                if (!String.IsNullOrEmpty(output.Lines.Last()))
+                                    output.Lines[output.Lines.Length] = string.Empty;
 
                                 string buffer = state.Fetch();
 
-                                AppendToTextBox(buffer, state.isError ? Brushes.Red : Brushes.White);
+                                AppendToTextBox(buffer, state.isError ? System.Drawing.Color.Red : System.Drawing.Color.White);
 
                                 if (!state.isError)
                                     ProcessStringForProgressBar(buffer);
@@ -337,20 +331,20 @@ namespace DICUI.Windows
 
         #region EventHandlers
 
-        private void OnWindowClosed(object sender, EventArgs e)
+        private void OnWindowClosed(object sender, FormClosedEventArgs e)
         {
             GracefullyTerminateProcess();
         }
 
         private void OnWindowLoaded(object sender, EventArgs e)
         {
-            var hwnd = new WindowInteropHelper(this).Handle;
+            var hwnd = this.Handle;
             SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) & ~WS_SYSMENU);
         }
 
         void OnProcessExit(object sender, EventArgs e)
         {
-            Dispatcher.Invoke(() => AbortButton.IsEnabled = false);
+            //Dispatcher.CurrentDispatcher.Invoke(() => AbortButton.IsEnabled = false);
             GracefullyTerminateProcess();
         }
 
@@ -359,12 +353,12 @@ namespace DICUI.Windows
             ViewModels.LoggerViewModel.WindowVisible = false;
             //TODO: this should be bound directly to WindowVisible property in two way fashion
             // we need to study how to properly do it in XAML
-            _mainWindow.ShowLogMenuItem.IsChecked = false;
+            _mainWindow.showLogWindowToolStripMenuItem.Checked = false;
         }
 
         private void OnClearButton(object sender, EventArgs e)
         {
-            output.Document.Blocks.Clear();
+            output.Clear();
         }
 
         private void OnAbortButton(object sender, EventArgs args)
@@ -377,12 +371,16 @@ namespace DICUI.Windows
             //StartDump("cd e Gam.iso 16");
         }
 
-        private void OnTextChanged(object sender, TextChangedEventArgs e)
+        private void OnTextChanged(object sender, EventArgs e)
         {
-            outputViewer.ScrollToBottom();
+            output.ScrollToCaret();
         }
 
         #endregion
 
+        private void OpenAtStartupCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
     }
 }

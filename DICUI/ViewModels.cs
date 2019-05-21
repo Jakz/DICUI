@@ -1,5 +1,7 @@
 ﻿using System;
+using System.IO;
 using System.Windows.Media;
+using DICUI.Utilities;
 using DICUI.Windows;
 
 namespace DICUI
@@ -81,6 +83,7 @@ namespace DICUI
     public class LoggerViewModel
     {
         private LogWindow _logWindow;
+        private StreamWriter _logToFileStream;
 
         public void SetWindow(LogWindow logWindow) => _logWindow = logWindow;
 
@@ -99,10 +102,34 @@ namespace DICUI
             }
         }
 
+        public void SessionStarted(DumpEnvironment env)
+        {
+            string outputFilename = Path.GetFileNameWithoutExtension(env.OutputFilename);
+            string combinedBase = Path.Combine(env.OutputDirectory, outputFilename + ".log");
+            String header = System.DateTime.Now.ToString("dd-MM-yyyy HH:mm:ss");
+            _logToFileStream = File.AppendText("log.txt");
+            _logToFileStream.WriteLine("-- Session started at " + header + " --" + "\n");
+        }
+
+        public void SessionEnded()
+        {
+            if (ViewModels.OptionsViewModel.SaveLogToFile && _logToFileStream != null)
+                _logToFileStream.WriteLine("-- Session ended --");
+                _logToFileStream.Close();
+        }
+
+        public void LogToFile(string text)
+        {
+            if (ViewModels.OptionsViewModel.SaveLogToFile && _logToFileStream != null)
+                _logToFileStream.Write(text);
+        }
+
         public void VerboseLog(string text)
         {
             if (ViewModels.OptionsViewModel.VerboseLogging)
                 _logWindow.AppendToTextBox(text, Brushes.Yellow);
+
+            LogToFile(text);
         }
 
         public void VerboseLog(string format, params object[] args) => VerboseLog(string.Format(format, args));

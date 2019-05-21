@@ -12,10 +12,10 @@ using Newtonsoft.Json;
 
 namespace DICUI.Utilities
 {
-    /// <summary>
-    /// Represents the state of all settings to be used during dumping
-    /// </summary>
-    public class DumpEnvironment
+  /// <summary>
+  /// Represents the state of all settings to be used during dumping
+  /// </summary>
+  public class DumpEnvironment
     {
         #region Tool paths
 

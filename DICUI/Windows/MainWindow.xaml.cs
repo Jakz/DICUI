@@ -465,6 +465,10 @@ namespace DICUI.Windows
                     }
                 }
 
+                
+
+                ViewModels.LoggerViewModel.SessionStarted(_env);
+
                 StartStopButton.Content = Constants.StopDumping;
                 CopyProtectScanButton.IsEnabled = false;
                 StatusLabel.Content = "Beginning dumping process";
@@ -476,6 +480,8 @@ namespace DICUI.Windows
 
                 StatusLabel.Content = result ? "Dumping complete!" : result.Message;
                 ViewModels.LoggerViewModel.VerboseLogLn(result ? "Dumping complete!" : result.Message);
+
+                ViewModels.LoggerViewModel.SessionEnded();
             }
             catch
             {
