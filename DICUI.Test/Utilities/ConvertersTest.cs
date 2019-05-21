@@ -26,7 +26,7 @@ namespace DICUI.Test.Utilities
         [InlineData(DICCommand.XBOX, MediaType.DVD)]
         public void BaseCommandToMediaTypeTest(DICCommand command, MediaType? expected)
         {
-            MediaType? actual = Converters.BaseCommmandToMediaType(command);
+            MediaType? actual = command.ToMediaType();
             Assert.Equal(expected, actual);
         }
 
@@ -49,7 +49,7 @@ namespace DICUI.Test.Utilities
         [InlineData(DICCommand.XBOX, KnownSystem.MicrosoftXBOX)]
         public void BaseCommandToKnownSystemTest(DICCommand command, KnownSystem? expected)
         {
-            KnownSystem? actual = Converters.BaseCommandToKnownSystem(command);
+            KnownSystem? actual = Converters.ToKnownSystem(command);
             Assert.Equal(expected, actual);
         }
 
@@ -63,7 +63,7 @@ namespace DICUI.Test.Utilities
         [InlineData(MediaType.NONE, null)]
         public void MediaTypeToExtensionTest(MediaType? mediaType, string expected)
         {
-            string actual = Converters.MediaTypeToExtension(mediaType);
+            string actual = Converters.Extension(mediaType);
             Assert.Equal(expected, actual);
         }
 
@@ -73,7 +73,7 @@ namespace DICUI.Test.Utilities
         [InlineData(MediaType.NONE, "Unknown")]
         public void MediaTypeToStringTest(MediaType? mediaType, string expected)
         {
-            string actual = Converters.MediaTypeToString(mediaType);
+            string actual = Converters.LongName(mediaType);
             Assert.Equal(expected, actual);
         }
 
@@ -85,7 +85,7 @@ namespace DICUI.Test.Utilities
         [InlineData(KnownSystem.NONE, "Unknown")]
         public void KnownSystemToStringTest(KnownSystem? knownSystem, string expected)
         {
-            string actual = Converters.KnownSystemToString(knownSystem);
+            string actual = Converters.LongName(knownSystem);
             Assert.Equal(expected, actual);
         }
 
@@ -93,7 +93,7 @@ namespace DICUI.Test.Utilities
         public void KnownSystemHasValidCategory()
         {
             var values = Validators.CreateListOfSystems();
-            KnownSystem[] markers = { KnownSystem.MarkerArcadeEnd, KnownSystem.MarkerConsoleEnd, KnownSystem.MarkerComputerEnd, KnownSystem.MarkerOtherEnd };
+            KnownSystem[] markers = { KnownSystem.MarkerArcadeEnd, KnownSystem.MarkerDiscBasedConsoleEnd, /* KnownSystem.MarkerOtherConsoleEnd, */ KnownSystem.MarkerComputerEnd, KnownSystem.MarkerOtherEnd };
 
             values.ForEach(system => {
                 if (system == KnownSystem.NONE)
@@ -106,7 +106,8 @@ namespace DICUI.Test.Utilities
                 switch (category)
                 {
                     case KnownSystemCategory.Arcade: marker = KnownSystem.MarkerArcadeEnd; break;
-                    case KnownSystemCategory.Console: marker = KnownSystem.MarkerConsoleEnd; break;
+                    case KnownSystemCategory.DiscBasedConsole: marker = KnownSystem.MarkerDiscBasedConsoleEnd; break;
+                    /* case KnownSystemCategory.OtherConsole: marker = KnownSystem.MarkerOtherConsoleEnd; break; */
                     case KnownSystemCategory.Computer: marker = KnownSystem.MarkerComputerEnd; break;
                     case KnownSystemCategory.Other: marker = KnownSystem.MarkerOtherEnd; break;
                 }

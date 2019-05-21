@@ -1,6 +1,24 @@
 ﻿namespace DICUI.Data
 {
     /// <summary>
+    /// Category for Redump
+    /// </summary>
+    public enum Category
+    {
+        Games = 1,
+        Demos = 2,
+        Video = 3,
+        Audio = 4,
+        Multimedia = 5,
+        Applications = 6,
+        Coverdiscs = 7,
+        Educational = 8,
+        BonusDiscs = 9,
+        Preproduction = 10,
+        AddOns = 11,
+    }
+
+    /// <summary>
     /// Supported DIC commands
     /// </summary>
     public enum DICCommand
@@ -58,6 +76,17 @@
         SeventyFour,
         SkipSector,
         SubchannelReadLevel,
+        VideoNow,
+    }
+
+    /// <summary>
+    /// Dump status for Redump
+    /// </summary>
+    public enum DumpStatus
+    {
+        PossibleBadDumpYellow = 3,
+        OriginalMediaBlue = 4,
+        TwoOrMoreDumpsGreen = 5,
     }
 
     /// <summary>
@@ -67,12 +96,19 @@
     {
         NONE = 0,
 
-        #region Consoles
+        #region Disc-Based Consoles
 
+        AtariJaguarCD,
         BandaiPlaydiaQuickInteractiveSystem,
         BandaiApplePippin,
         CommodoreAmigaCD32,
         CommodoreAmigaCDTV,
+        EnvizionsEVOSmartConsole,
+        FujitsuFMTownsMarty,
+        HasbroVideoNow,
+        HasbroVideoNowColor,
+        HasbroVideoNowJr,
+        HasbroVideoNowXP,
         MattelHyperscan,
         MicrosoftXBOX,
         MicrosoftXBOX360,
@@ -80,10 +116,12 @@
         NECPCEngineTurboGrafxCD,
         NECPCFX,
         NintendoGameCube,
+        NintendoSonySuperNESCDROMSystem,
         NintendoWii,
         NintendoWiiU,
-        Panasonic3DOInteractiveMultiplayer,
+        Panasonic3DOInteractiveMultiplayer, // The 3DO Company 3DO Interactive Multiplayer
         PhilipsCDi,
+        PioneerLaserActive,
         SegaCDMegaCD,
         SegaDreamcast,
         SegaSaturn,
@@ -93,11 +131,69 @@
         SonyPlayStation3,
         SonyPlayStation4,
         SonyPlayStationPortable,
+        TandyMemorexVisualInformationSystem,
         VMLabsNuon,
         VTechVFlashVSmilePro,
         ZAPiTGamesGameWaveFamilyEntertainmentSystem,
 
-        MarkerConsoleEnd,
+        MarkerDiscBasedConsoleEnd,
+
+        #endregion
+
+        #region Cartridge-Based and Other Consoles
+
+        /*
+        AmstradGX4000,
+        APFMicrocomputerSystem,
+        Atari2600VCS,
+        Atari5200,
+        Atari7800,
+        AtariJaguar,
+        AtariXEVideoGameSystem,
+        Audiosonic1292AdvancedProgrammableVideoSystem,
+        BallyAstrocade,
+        BitCorporationDina,
+        CasioLoopy,
+        CasioPV1000,
+        Commodore64GamesSystem,
+        DaewooElectronicsZemmix,
+        EmersonArcadia2001,
+        EpochCassetteVision,
+        EpochSuperCassetteVision,
+        FairchildChannelF,
+        FuntechSuperACan,
+        GeneralConsumerElectricVectrex,
+        HeberBBCBridgeCompanion,
+        IntertonVC4000,
+        JungleTacVii,
+        LeapFrogClickStart,
+        LJNVideoArt,
+        MagnavoxOdyssey2,
+        MattelIntellivision,
+        NECPCEngineTurboGrafx16,
+        NichibutsuMyVision,
+        Nintendo64,
+        Nintendo64DD,
+        NintendoFamilyComputerNintendoEntertainmentSystem,
+        NintendoFamilyComputerDiskSystem,
+        NintendoSuperFamicomSuperNintendoEntertainmentSystem,
+        NintendoSwitch,
+        PhilipsVideopacPlusG7400,
+        RCAStudioII,
+        Sega32X,
+        SegaMarkIIIMasterSystem,
+        SegaMegaDriveGenesis,
+        SegaSG1000,
+        SNKNeoGeo,
+        SSDCOMPANYLIMITEDXaviXPORT,
+        ViewMasterInteractiveVision,
+        VTechCreatiVision,
+        VTechVSmile,
+        VTechSocrates,
+        WorldsOfWonderActionMax,
+
+        MarkerOtherConsoleEnd,
+        */
 
         #endregion
 
@@ -105,7 +201,7 @@
 
         AcornArchimedes,
         AppleMacintosh,
-        CommodoreAmigaCD,
+        CommodoreAmiga,
         FujitsuFMTowns,
         IBMPCCompatible,
         NECPC88,
@@ -141,7 +237,6 @@
         KonamiTwinkle,
         KonamiVarious,
         MeritIndustriesBoardwalk,
-        MeritIndustriesMegaTouchAurora,
         MeritIndustriesMegaTouchForce,
         MeritIndustriesMegaTouchION,
         MeritIndustriesMegaTouchMaxx,
@@ -171,7 +266,6 @@
         SegaSystem32,
         SeibuCATSSystem,
         TABAustriaQuizard,
-        TandyMemorexVisualInformationSystem,
         TsunamiTsuMoMultiGameMotionSystem,
 
         MarkerArcadeEnd,
@@ -184,10 +278,8 @@
         BDVideo,
         DVDVideo,
         EnhancedCD,
-        EnhancedDVD,
-        EnhancedBD,
-        HasbroVideoNow,
         HDDVDVideo,
+        NavisoftNaviken21,
         PalmOS,
         PhilipsCDiDigitalVideo,
         PhotoCD,
@@ -207,12 +299,56 @@
     /// </summary>
     public enum KnownSystemCategory
     {
-        Console = 0,
+        DiscBasedConsole = 0,
+        OtherConsole,
         Computer,
         Arcade,
         Other,
         Custom
     };
+
+    /// <summary>
+    /// List of all disc langauges
+    /// </summary>
+    public enum Language
+    {
+        Afrikaans,
+        Arabic,
+        Basque,
+        Bulgarian,
+        Catalan,
+        Chinese,
+        Croatian,
+        Czech,
+        Danish,
+        Dutch,
+        English,
+        Finnish,
+        French,
+        Gaelic,
+        German,
+        Greek,
+        Hebrew,
+        Hindi,
+        Hungarian,
+        Italian,
+        Japanese,
+        Korean,
+        Norwegian,
+        Polish,
+        Portuguese,
+        Punjabi,
+        Romanian,
+        Russian,
+        Slovak,
+        Slovenian,
+        Spanish,
+        Swedish,
+        Tamil,
+        Thai,
+        Turkish,
+        Ukrainian,
+    }
 
     /// <summary>
     /// Known media types
@@ -256,7 +392,7 @@
         LaserDisc, // LD-ROM and LV-ROM variants
         Nintendo64DD,
         NintendoFamicomDiskSystem,
-        NintendoGameCube,
+        NintendoGameCubeGameDisc,
         NintendoWiiOpticalDisc,
         NintendoWiiUOpticalDisc,
         UMD,
@@ -266,5 +402,81 @@
         // Unsorted Formats
         Cartridge,
         CED,
+    }
+
+    /// <summary>
+    /// List of all known Redump regions
+    /// </summary>
+    public enum Region
+    {
+        Argentina,
+        Asia,
+        AsiaEurope,
+        AsiaUSA,
+        Australia,
+        Austria,
+        AustriaSwitzerland,
+        Belgium,
+        BelgiumNetherlands,
+        Brazil,
+        Canada,
+        China,
+        Croatia,
+        Czech,
+        Denmark,
+        Europe,
+        EuropeAsia,
+        EuropeAustralia,
+        Finland,
+        France,
+        FranceSpain,
+        Germany,
+        Greece,
+        Hungary,
+        India,
+        Ireland,
+        Israel,
+        Italy,
+        Japan,
+        JapanAsia,
+        JapanEurope,
+        JapanKorea,
+        JapanUSA,
+        Korea,
+        LatinAmerica,
+        Netherlands,
+        Norway,
+        Poland,
+        Portugal,
+        Russia,
+        Scandinavia,
+        Singapore,
+        Slovakia,
+        SouthAfrica,
+        Spain,
+        Sweden,
+        Switzerland,
+        Taiwan,
+        Thailand,
+        Turkey,
+        UnitedArabEmirates,
+        UK,
+        Ukraine,
+        USA,
+        USAAsia,
+        USABrazil,
+        USAEurope,
+        USAJapan,
+        World,
+    }
+
+    /// <summary>
+    /// Generic yes/no values for Redump
+    /// </summary>
+    public enum YesNo
+    {
+        NULL = 0,
+        No = 1,
+        Yes = 2,
     }
 }
